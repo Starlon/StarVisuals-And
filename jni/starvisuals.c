@@ -27,9 +27,9 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "lcd4linux/evaluator.h"
+#include "evaluator.h"
 
-#define  LOG_TAG    "libstarvisuals"
+#define  LOG_TAG    "starvisuals"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
@@ -47,13 +47,15 @@ char *_init = "n=800;";
 
 void _cos(RESULT *result, RESULT *arg1) {
         double val = R2N(arg1);
-	//SetResult(&result, R_NUMBER, cos(val));
+	double c = cos(val);
+	SetResult(&result, R_NUMBER, &c);
 	return;
 }
 
 void _sin(RESULT *result, RESULT *arg1) {
         double val = R2N(arg1);
-	//SetResult(&result, R_NUMBER, sin(val));
+	double s = sin(val);
+	SetResult(&result, R_NUMBER, &s);
 	return;
 }
 
@@ -765,7 +767,7 @@ void android_main(struct android_app* state) {
 
         if (engine.animating) {
 		LOGI("FRAME");
-            //engine_draw_frame(&engine);
+            engine_draw_frame(&engine);
         }
     }
 }

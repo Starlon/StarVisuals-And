@@ -80,7 +80,7 @@
 #include <math.h>
 #include <setjmp.h>
 
-#include "debug.h"
+//#include "debug.h"
 #include "evaluator.h"
 
 #ifdef WITH_DMALLOC
