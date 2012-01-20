@@ -1,5 +1,5 @@
-/* $Id: evaluator.h 754 2007-01-21 06:19:40Z michael $
- * $URL: https://ssl.bulix.org/svn/lcd4linux/branches/0.10.1/evaluator.h $
+/* $Id: evaluator.h 1358 2010-06-07 08:01:59Z starlon $
+ * $URL: https://libvisual.svn.sourceforge.net/svnroot/libvisual/branches/visscript-evaluator/evaluator.h $
  *
  * expression evaluation
  *
@@ -45,10 +45,11 @@ typedef struct {
     RESULT *value;
 } VARIABLE;
 
-int SetVariable(const char *name, RESULT *value);
+VARIABLE *FindVariable(const char *name);
+int SetVariable(const char *name, RESULT * value);
 int SetVariableNumeric(const char *name, const double value);
 int SetVariableString(const char *name, const char *value);
-VARIABLE *FindVariable(const char *name);
+RESULT *GetVariable(const char *name);
 
 int AddFunction(const char *name, const int argc, void (*func) ());
 

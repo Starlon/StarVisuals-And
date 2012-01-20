@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include "evaluator.h"
+
 #define  LOG_TAG    "libplasma"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
@@ -37,6 +39,198 @@
 
 /* Set to 1 to optimize memory stores when generating plasma. */
 #define OPTIMIZE_WRITES  1
+
+
+static __inline int makeint(double t)
+{
+  if (t <= 0.0) return 0;
+  if (t >= 1.0) return 255;
+  return (int)(t*255.0);
+}
+
+char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d;";
+char frame[] = "t=t-0.01;count=count+1;";
+char beat[] = "";
+char init[] = "n=800;";
+
+void _cos(RESULT *result, RESULT *arg1) {
+        double val = R2N(arg1);
+	double c = cos(val);
+	SetResult(&result, R_NUMBER, &c);
+	return;
+}
+
+void _sin(RESULT *result, RESULT *arg1) {
+        double val = R2N(arg1);
+	double s = sin(val);
+	SetResult(&result, R_NUMBER, &s);
+	return;
+}
+
+typedef struct {
+    double n, b, x, y, i, v, w, h, red, green, blue, linesize, skip, drawmode, t, d; 
+
+    int needs_init;
+    int color_pos;
+    int pal;
+    int channel_source;
+    int blendmode;
+
+    void *init;
+    void *beat;
+    void *frame;
+    void *point;
+
+} SuperScopePrivate;
+
+
+int TRUE = 1;
+int FALSE = 0;
+
+typedef enum scope_runnable ScopeRunnable;
+
+enum scope_runnable {
+    SCOPE_RUNNABLE_INIT,
+    SCOPE_RUNNABLE_FRAME,
+    SCOPE_RUNNABLE_BEAT,
+    SCOPE_RUNNABLE_POINT,
+};
+
+int scope_load_runnable(SuperScopePrivate *priv, ScopeRunnable runnable, char *buf)
+{
+    switch((int)runnable) {
+        case SCOPE_RUNNABLE_INIT:
+		Compile(buf, priv->init);
+	break;
+	case SCOPE_RUNNABLE_BEAT:
+		Compile(buf, priv->beat);
+	break;
+	case SCOPE_RUNNABLE_FRAME:
+		Compile(buf, priv->frame);
+	break;
+	case SCOPE_RUNNABLE_POINT:
+		Compile(buf, priv->point);
+	break;
+    }
+    return 0;
+}
+
+int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
+{
+
+    RESULT result;
+
+    SetVariableNumeric("n", priv->n);
+    SetVariableNumeric("b", priv->b);
+    SetVariableNumeric("x", priv->x);
+    SetVariableNumeric("y", priv->y);
+    SetVariableNumeric("i", priv->i);
+    SetVariableNumeric("v", priv->v);
+    SetVariableNumeric("w", priv->w);
+    SetVariableNumeric("h", priv->h);
+    SetVariableNumeric("red", priv->red);
+    SetVariableNumeric("green", priv->green);
+    SetVariableNumeric("blue", priv->blue);
+    SetVariableNumeric("linesize", priv->linesize);
+    SetVariableNumeric("skip", priv->skip);
+    SetVariableNumeric("drawmode", priv->drawmode);
+    SetVariableNumeric("t", priv->t);
+    SetVariableNumeric("d", priv->d);
+
+    switch(runnable) {
+        case SCOPE_RUNNABLE_INIT:
+		Eval(priv->init, &result);
+	break;
+	case SCOPE_RUNNABLE_BEAT:
+		Eval(priv->beat, &result);
+	break;
+	case SCOPE_RUNNABLE_FRAME:
+		Eval(priv->frame, &result);
+	break;
+	case SCOPE_RUNNABLE_POINT:
+		Eval(priv->point, &result);
+	break;
+    }
+
+    //(FindVariable("n"))->value = NULL;
+    VARIABLE var;
+    var.value = NULL;
+    priv->n = R2N(FindVariable("n")->value);
+    priv->b = R2N(FindVariable("b")->value);
+    priv->x = R2N(FindVariable("x")->value);
+    priv->y = R2N(FindVariable("y")->value);
+    priv->i = R2N(FindVariable("i")->value);
+    priv->v = R2N(FindVariable("v")->value);
+    priv->w = R2N(FindVariable("w")->value);
+    priv->h = R2N(FindVariable("h")->value);
+    priv->red = R2N(FindVariable("red")->value);
+    priv->green = R2N(FindVariable("green")->value);
+    priv->blue = R2N(FindVariable("blue")->value);
+    priv->linesize = R2N(FindVariable("linesize")->value);
+    priv->skip = R2N(FindVariable("skip")->value);
+    priv->drawmode = R2N(FindVariable("drawmode")->value);
+    priv->t = R2N(FindVariable("t")->value);
+    priv->d = R2N(FindVariable("d")->value);
+
+    return 0;
+}
+
+int avs_gfx_line_ints (void *pixels, int x0, int y0, int x1, int y1, int pitch, int col)
+{
+	register int dy = y1 - y0;
+	register int dx = x1 - x0;
+	register int stepx, stepy, stepy_;
+	register int fraction;
+	register int bp;
+	register int x;
+	register int y;
+	uint32_t color = col;
+	uint32_t *buf = pixels;
+	uint32_t pbpp = pitch;
+
+	if (dy < 0) {
+		dy = -dy;
+		stepy_ = -pbpp;
+		stepy = -1;
+	} else {
+		stepy = 1;
+		stepy_ = pbpp;
+	}
+
+	if (dx < 0) {
+		dx = -dx;
+		stepx = -1;
+	} else {
+		stepx = 1;
+	}
+
+	dy <<= 1;
+	dx <<= 1;
+
+	bp = x0 + y0 * (pbpp);
+
+	*(buf + bp) = color;
+
+	x = x0;
+	y = y0;
+
+	if (dx > dy) {
+		fraction = dy - (dx >> 1);
+		while (x0 != x1) {
+			if (fraction >= 0) {
+				bp += stepy_;
+				fraction -= dx;
+			}
+			x0 += stepx;
+			bp += stepx;
+			fraction += dy;
+
+			buf[bp] = color;
+		}
+	}
+
+	return 0;
+}
 
 /* Return current time in milliseconds */
 static double now_ms(void)
@@ -275,6 +469,136 @@ static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
     }
 }
 
+static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buffer, double  t)
+{
+    //LVAVSPipeline *pipeline = priv->pipeline;
+    int32_t *buf = buffer->bits;
+    int isBeat;
+    int i;
+
+    //VisBuffer pcm;
+    float pcmbuf[512];
+    int size = 256;
+
+    if(priv->needs_init) {
+        priv->needs_init = FALSE;
+        scope_run(priv, SCOPE_RUNNABLE_INIT);
+    }
+
+    int a, l, lx = 0, ly = 0, x = 0, y = 0;
+    int32_t current_color;
+    int ws=(priv->channel_source&4)?1:0;
+    int xorv=(ws*128)^128;
+    uint16_t fa_data[576];
+
+/*
+    if((priv->channel_source&3) >= 2)
+    {
+        for(x = 0; x < size; x++) {
+            pcmbuf[x] = pipeline->audiodata[ws^1][0][x] / 2 + pipeline->audiodata[ws^1][1][x] / 2;
+        }
+    }
+    else 
+    {
+        for(x = 0; x < size; x++) {
+            pcmbuf[x] = pipeline->audiodata[ws^1][priv->channel_source&3][x];
+        }
+    }
+  */
+
+    for(x = 0; x < size; x++) 
+    {
+	pcmbuf[x] = 1; //pipeline->audiodata[ws^1][priv->channel_source&3][x];
+    }  
+    priv->color_pos++;
+
+    //if(priv->color_pos >= priv->pal.ncolors * 64) priv->color_pos = 0;
+
+    {
+        int p = priv->color_pos/64;
+        int r = priv->color_pos&63;
+        int c1, c2;
+        int r1, r2, r3;
+        //c1 = visual_color_to_uint32(&priv->pal.colors[p]);
+	c1 = 0x00ff00;
+        c2 = 0xff0000;
+	/*
+        if(p+1 < priv->pal.ncolors)
+            c2=0x0000ff; //visual_color_to_uint32(&priv->pal.colors[p+1]);
+        else c2 = 0xff0000;//visual_color_to_uint32(&priv->pal.colors[0]);
+	*/
+
+        r1 = (((c1&255)*(63-r))+((c2&255)*4))/64;
+        r2 = ((((c1>>8)&255)*(63-r))+(((c2>>8)&255)*4))/64;
+        r3 = ((((c1>>16)&255)*(63-r))+(((c2>>16)&255)*r))/64;
+
+        current_color = r1|(r2<<8)|(r3<<16)|(255<<24);
+    }
+
+    priv->h = buffer->height;
+    priv->w = buffer->width;
+    priv->b = isBeat?1.0:0.0;
+    priv->blue = (current_color&0xff)/255.0;
+    priv->green = ((current_color>>8)&0xff)/255.0;
+    priv->red = ((current_color>>16)&0xff)/255.0;
+    priv->skip = 0.0;
+    priv->linesize = (double) ((priv->blendmode&0xff0000)>>16);
+    priv->drawmode = priv->drawmode ? 1.0 : 0.0;
+
+    scope_run(priv, SCOPE_RUNNABLE_FRAME);
+
+return;
+    if (isBeat)
+        scope_run(priv, SCOPE_RUNNABLE_BEAT);
+
+    int candraw=0;
+    l = priv->n;
+    if (l >= 128*size)
+        l = 128*size - 1;
+
+    for (a=0; a < l; a++) 
+    {
+        double r=(a*size)/(double)l;
+        double s1=r-(int)r;
+        int val1 = (pcmbuf[(int)r] + 1) / 2.0 * 128;
+        int val2 = (pcmbuf[(int)r+1] + 1) / 2.0  * 128;
+        double yr=(val1^xorv)*(1.0-s1)+(val2^xorv)*(s1);
+        priv->v = yr/128.0;
+        priv->i = (double)a/(double)(l-1);
+        priv->skip = 0.0;
+        scope_run(priv, SCOPE_RUNNABLE_POINT);
+
+        x = (int)((priv->x + 1.0) * buffer->width * 0.5);
+        y = (int)((priv->y + 1.0) * buffer->height * 0.5);
+
+
+        if (priv->skip >= 0.00001)
+            continue;
+
+        uint32_t this_color = makeint(priv->blue) | (makeint(priv->green) << 8) | (makeint(priv->red) << 16) | (255 << 24);
+
+        if (priv->drawmode < 0.00001 && 0) {
+            if (y >= 0 && y < buffer->height && x >= 0 && x < buffer->width) {
+                //BLEND_LINE(buf+x+y*buffer->width, this_color, priv->blendtable, pipeline->blendmode);
+            }
+        } else {
+            if (a > 0) {
+                if (y >= 0 && y < buffer->height && x >= 0 && x < buffer->width &&
+                    ly >= 0 && ly < buffer->height && lx >= 0 && lx < buffer->width) {
+                        avs_gfx_line_ints(buf, lx, ly, x, y, buffer->width, this_color);
+                }
+            }
+        }
+       	lx = x;
+        ly = y;
+    }
+
+
+    //LOGI("width=%d height=%d stride=%d format=%d", buffer->width, buffer->height,
+    //        buffer->stride, buffer->format);
+}
+
+
 /* simple stats management */
 typedef struct {
     double  renderTime;
@@ -378,6 +702,7 @@ struct engine {
     Stats stats;
 
     int animating;
+    SuperScopePrivate *priv;
 };
 
 static void engine_draw_frame(struct engine* engine) {
@@ -400,7 +725,8 @@ static void engine_draw_frame(struct engine* engine) {
     int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
 
     /* Now fill the values with a nice little plasma */
-    fill_plasma(&buffer, time_ms);
+    fill_starvisuals(engine->priv, &buffer, time_ms);
+    //fill_plasma(&buffer, time_ms);
 
     ANativeWindow_unlockAndPost(engine->app->window);
 
@@ -453,6 +779,8 @@ void android_main(struct android_app* state) {
     app_dummy();
 
     memset(&engine, 0, sizeof(engine));
+    engine.priv = malloc(sizeof(SuperScopePrivate));
+    memset(engine.priv, 0, sizeof(SuperScopePrivate));
     state->userData = &engine;
     state->onAppCmd = engine_handle_cmd;
     state->onInputEvent = engine_handle_input;

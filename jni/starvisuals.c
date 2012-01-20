@@ -29,7 +29,7 @@
 
 #include "evaluator.h"
 
-#define  LOG_TAG    "starvisuals"
+#define  LOG_TAG    "libplasma"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
@@ -37,13 +37,21 @@
 /* Set to 1 to enable debug log traces. */
 #define DEBUG 0
 
-/* Set to 1 to optimize memory stores when generating starvisuals. */
+/* Set to 1 to optimize memory stores when generating plasma. */
 #define OPTIMIZE_WRITES  1
 
-char *_point = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d;";
-char *_frame = "t=t-0.01;count=count+1;";
-char *_beat = "";
-char *_init = "n=800;";
+
+static __inline int makeint(double t)
+{
+  if (t <= 0.0) return 0;
+  if (t >= 1.0) return 255;
+  return (int)(t*255.0);
+}
+
+char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d;";
+char frame[] = "t=t-0.01;count=count+1;";
+char beat[] = "";
+char init[] = "n=800;";
 
 void _cos(RESULT *result, RESULT *arg1) {
         double val = R2N(arg1);
@@ -147,7 +155,6 @@ int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
     //(FindVariable("n"))->value = NULL;
     VARIABLE var;
     var.value = NULL;
-/*
     priv->n = R2N(FindVariable("n")->value);
     priv->b = R2N(FindVariable("b")->value);
     priv->x = R2N(FindVariable("x")->value);
@@ -164,7 +171,6 @@ int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
     priv->drawmode = R2N(FindVariable("drawmode")->value);
     priv->t = R2N(FindVariable("t")->value);
     priv->d = R2N(FindVariable("d")->value);
-*/
 
     return 0;
 }
@@ -224,13 +230,6 @@ int avs_gfx_line_ints (void *pixels, int x0, int y0, int x1, int y1, int pitch, 
 	}
 
 	return 0;
-}
-
-static __inline int makeint(double t)
-{
-  if (t <= 0.0) return 0;
-  if (t >= 1.0) return 255;
-  return (int)(t*255.0);
 }
 
 /* Return current time in milliseconds */
@@ -327,7 +326,7 @@ static __inline__ Fixed  fixed_cos( Fixed  f )
     return angle_cos(ANGLE_FROM_FIXED(f));
 }
 
-/* Color palette used for rendering the starvisuals */
+/* Color palette used for rendering the plasma */
 #define  PALETTE_BITS   8
 #define  PALETTE_SIZE   (1 << PALETTE_BITS)
 
@@ -385,9 +384,93 @@ static void init_tables(void)
     init_angles();
 }
 
+static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
+{
+    Fixed ft  = FIXED_FROM_FLOAT(t/1000.);
+    Fixed yt1 = FIXED_FROM_FLOAT(t/1230.);
+    Fixed yt2 = yt1;
+    Fixed xt10 = FIXED_FROM_FLOAT(t/3000.);
+    Fixed xt20 = xt10;
+
+#define  YT1_INCR   FIXED_FROM_FLOAT(1/100.)
+#define  YT2_INCR   FIXED_FROM_FLOAT(1/163.)
+
+    void* pixels = buffer->bits;
+    //LOGI("width=%d height=%d stride=%d format=%d", buffer->width, buffer->height,
+    //        buffer->stride, buffer->format);
+
+    int  yy;
+    for (yy = 0; yy < buffer->height; yy++) {
+        uint16_t*  line = (uint16_t*)pixels;
+        Fixed      base = fixed_sin(yt1) + fixed_sin(yt2);
+        Fixed      xt1 = xt10;
+        Fixed      xt2 = xt20;
+
+        yt1 += YT1_INCR;
+        yt2 += YT2_INCR;
+
+#define  XT1_INCR  FIXED_FROM_FLOAT(1/173.)
+#define  XT2_INCR  FIXED_FROM_FLOAT(1/242.)
+
+#if OPTIMIZE_WRITES
+        /* optimize memory writes by generating one aligned 32-bit store
+         * for every pair of pixels.
+         */
+        uint16_t*  line_end = line + buffer->width;
+
+        if (line < line_end) {
+            if (((uint32_t)line & 3) != 0) {
+                Fixed ii = base + fixed_sin(xt1) + fixed_sin(xt2);
+
+                xt1 += XT1_INCR;
+                xt2 += XT2_INCR;
+
+                line[0] = palette_from_fixed(ii >> 2);
+                line++;
+            }
+
+            while (line + 2 <= line_end) {
+                Fixed i1 = base + fixed_sin(xt1) + fixed_sin(xt2);
+                xt1 += XT1_INCR;
+                xt2 += XT2_INCR;
+
+                Fixed i2 = base + fixed_sin(xt1) + fixed_sin(xt2);
+                xt1 += XT1_INCR;
+                xt2 += XT2_INCR;
+
+                uint32_t  pixel = ((uint32_t)palette_from_fixed(i1 >> 2) << 16) |
+                                   (uint32_t)palette_from_fixed(i2 >> 2);
+
+                ((uint32_t*)line)[0] = pixel;
+                line += 2;
+            }
+
+            if (line < line_end) {
+                Fixed ii = base + fixed_sin(xt1) + fixed_sin(xt2);
+                line[0] = palette_from_fixed(ii >> 2);
+                line++;
+            }
+        }
+#else /* !OPTIMIZE_WRITES */
+        int xx;
+        for (xx = 0; xx < buffer->width; xx++) {
+
+            Fixed ii = base + fixed_sin(xt1) + fixed_sin(xt2);
+
+            xt1 += XT1_INCR;
+            xt2 += XT2_INCR;
+
+            line[xx] = palette_from_fixed(ii / 4);
+        }
+#endif /* !OPTIMIZE_WRITES */
+
+        // go to next line
+        pixels = (uint16_t*)pixels + buffer->stride;
+    }
+}
+
 static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buffer, double  t)
 {
-
     //LVAVSPipeline *pipeline = priv->pipeline;
     int32_t *buf = buffer->bits;
     int isBeat;
@@ -464,6 +547,7 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
 
     scope_run(priv, SCOPE_RUNNABLE_FRAME);
 
+return;
     if (isBeat)
         scope_run(priv, SCOPE_RUNNABLE_BEAT);
 
@@ -513,6 +597,7 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
     //LOGI("width=%d height=%d stride=%d format=%d", buffer->width, buffer->height,
     //        buffer->stride, buffer->format);
 }
+
 
 /* simple stats management */
 typedef struct {
@@ -639,8 +724,9 @@ static void engine_draw_frame(struct engine* engine) {
     clock_gettime(CLOCK_MONOTONIC, &t);
     int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
 
-    /* Now fill the values with a nice little starvisuals */
+    /* Now fill the values with a nice little plasma */
     fill_starvisuals(engine->priv, &buffer, time_ms);
+    //fill_plasma(&buffer, time_ms);
 
     ANativeWindow_unlockAndPost(engine->app->window);
 
@@ -686,10 +772,8 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
 
 void android_main(struct android_app* state) {
     static int init;
-    struct engine engine;
-    RESULT result = { 0, 0, 0, NULL };
 
-    LOGI("WTF");
+    struct engine engine;
 
     // Make sure glue isn't stripped.
     app_dummy();
@@ -702,41 +786,13 @@ void android_main(struct android_app* state) {
     state->onInputEvent = engine_handle_input;
     engine.app = state;
 
-/*
     if (!init) {
-
         init_tables();
         init = 1;
     }
 
     stats_init(&engine.stats);
 
-    AddFunction("cos", 1, _cos);
-    AddFunction("sin", 1, _cos);
-
-    SetVariableNumeric("n", 0);
-    SetVariableNumeric("b", 0);
-    SetVariableNumeric("x", 0);
-    SetVariableNumeric("y", 0);
-    SetVariableNumeric("i", 0);
-    SetVariableNumeric("v", 0);
-    SetVariableNumeric("w", 0);
-    SetVariableNumeric("h", 0);
-    SetVariableNumeric("t", 0);
-    SetVariableNumeric("d", 0);
-    SetVariableNumeric("PI", 0);
-    SetVariableNumeric("red", 1);
-    SetVariableNumeric("green", 1);
-    SetVariableNumeric("blue", 1);
-    SetVariableNumeric("linesize", 0);
-    SetVariableNumeric("skip", 0);
-    SetVariableNumeric("drawmode", 0);
-
-    scope_load_runnable(engine.priv, SCOPE_RUNNABLE_INIT, _init);
-    scope_load_runnable(engine.priv, SCOPE_RUNNABLE_BEAT, _beat);
-    scope_load_runnable(engine.priv, SCOPE_RUNNABLE_FRAME, _frame);
-    scope_load_runnable(engine.priv, SCOPE_RUNNABLE_POINT, _point);
-*/
     // loop waiting for stuff to do.
 
     while (1) {
@@ -759,14 +815,12 @@ void android_main(struct android_app* state) {
             // Check if we are exiting.
             if (state->destroyRequested != 0) {
                 LOGI("Engine thread destroy requested!");
-		free(engine.priv);
                 engine_term_display(&engine);
                 return;
             }
         }
 
         if (engine.animating) {
-		LOGI("FRAME");
             engine_draw_frame(&engine);
         }
     }

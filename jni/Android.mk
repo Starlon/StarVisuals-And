@@ -26,7 +26,7 @@ include $(BUILD_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := starvisuals
-LOCAL_SRC_FILES := starvisuals.c
+LOCAL_SRC_FILES := plasma.c
 LOCAL_LDLIBS    := -lm -llog -landroid -Wall
 LOCAL_CFLAGS	:= -g -O0
 LOCAL_STATIC_LIBRARIES := android_native_app_glue evaluator

@@ -1,5 +1,5 @@
-/* $Id: evaluator.c 754 2007-01-21 06:19:40Z michael $
- * $URL: https://ssl.bulix.org/svn/lcd4linux/branches/0.10.1/evaluator.c $
+/* $Id: evaluator.c 1358 2010-06-07 08:01:59Z starlon $
+ * $URL: https://libvisual.svn.sourceforge.net/svnroot/libvisual/branches/visscript-evaluator/evaluator.c $
  *
  * expression evaluation
  *
@@ -71,8 +71,6 @@
  */
 
 
-//#include "config.h"
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -80,7 +78,6 @@
 #include <math.h>
 #include <setjmp.h>
 
-//#include "debug.h"
 #include "evaluator.h"
 
 #ifdef WITH_DMALLOC
@@ -128,26 +125,23 @@ typedef enum {
     O_BRC			/* closing brace */
 } OPERATOR;
 
-typedef struct {
+struct _PATTERN {
     char *pattern;
     int len;
     OPERATOR op;
-} PATTERN;
+};
 
-/*
-typedef struct {
-    char *name;
-    RESULT *value;
-} VARIABLE;
-*/
+typedef struct _PATTERN PATTERN;
 
-typedef struct {
+struct _FUNCTION {
     char *name;
     int argc;
     void (*func) ();
-} FUNCTION;
+};
 
-typedef struct _NODE {
+typedef struct _FUNCTION FUNCTION;
+
+struct _NODE {
     TOKEN Token;
     OPERATOR Operator;
     RESULT *Result;
@@ -155,9 +149,9 @@ typedef struct _NODE {
     FUNCTION *Function;
     int Children;
     struct _NODE **Child;
-} NODE;
+};
 
-
+typedef struct _NODE NODE;
 
 /* operators */
 /* IMPORTANT! list must be sorted by length! */
@@ -225,14 +219,13 @@ static void FreeResult(RESULT * result)
 static RESULT *NewResult(void)
 {
     RESULT *result = malloc(sizeof(RESULT));
+
     if (result == NULL) {
-	//error("Evaluator: cannot allocate result: out of memory!");
+	printf("Evaluator: cannot allocate result: out of memory!");
 	return NULL;
     }
-    result->type = 0;
-    result->size = 0;
-    result->number = 0.0;
-    result->string = NULL;
+
+    memset(result, 0, sizeof(RESULT));
 
     return result;
 }
@@ -268,9 +261,11 @@ RESULT *SetResult(RESULT ** result, const int type, const void *value)
 	}
 	strcpy((*result)->string, value);
     } else {
-	//error("Evaluator: internal error: invalid result type %d", type);
+	printf("Evaluator: internal error: invalid result type %d", type);
 	return NULL;
     }
+
+
 
     return *result;
 }
@@ -308,7 +303,7 @@ RESULT *CopyResult(RESULT ** result, RESULT * value)
 double R2N(RESULT * result)
 {
     if (result == NULL) {
-	//error("Evaluator: internal error: NULL result");
+	printf("Evaluator: internal error: NULL result");
 	return 0.0;
     }
 
@@ -326,7 +321,7 @@ double R2N(RESULT * result)
 	return result->number;
     }
 
-    //error("Evaluator: internal error: invalid result type %d", result->type);
+    printf("Evaluator: internal error: invalid result type %d", result->type);
     return 0.0;
 }
 
@@ -334,7 +329,7 @@ double R2N(RESULT * result)
 char *R2S(RESULT * result)
 {
     if (result == NULL) {
-	//error("Evaluator: internal error: NULL result");
+	printf("Evaluator: internal error: NULL result");
 	return NULL;
     }
 
@@ -356,7 +351,7 @@ char *R2S(RESULT * result)
 	return result->string;
     }
 
-    //error("Evaluator: internal error: invalid result type %d", result->type);
+    printf("Evaluator: internal error: invalid result type %d", result->type);
     return NULL;
 
 }
@@ -386,7 +381,7 @@ int SetVariable(const char *name, RESULT * value)
     }
 
     if (nVariable >= sizeof(Variable) / sizeof(Variable[0])) {
-	//error("Evaluator: cannot set variable <%s>: out of slots", name);
+	printf("Evaluator: cannot set variable <%s>: out of slots", name);
 	return -1;
     }
 
@@ -395,9 +390,21 @@ int SetVariable(const char *name, RESULT * value)
     Variable[nVariable - 1].value = NULL;
     CopyResult(&Variable[nVariable - 1].value, value);
 
+    printf("set variable\n");
     return 0;
 }
 
+RESULT *GetVariable(const char *name)
+{
+    VARIABLE *V;
+
+    V = FindVariable(name);
+
+    if (V == NULL) 
+        return NULL;
+
+    return V->value;
+}
 
 int SetVariableNumeric(const char *name, const double value)
 {
@@ -567,7 +574,7 @@ static void Parse(void)
 
     /* syntax check */
     if (Token == T_UNDEF && *ExprPtr != '\0') {
-	//error("Evaluator: parse error in <%s>: garbage <%s>", Expression, ExprPtr);
+	printf("Evaluator: parse error in <%s>: garbage <%s>", Expression, ExprPtr);
     }
 
     /* skip trailing whitespace */
@@ -642,7 +649,7 @@ static NODE *Level12(void)
 	Parse();
 	Root = Level01();
 	if (Token != T_OPERATOR || Operator != O_BRC) {
-	    //error("Evaluator: unbalanced parentheses in <%s>", Expression);
+	    printf("Evaluator: unbalanced parentheses in <%s>", Expression);
 	    LinkNode(Root, JunkNode());
 	}
     }
@@ -668,7 +675,7 @@ static NODE *Level12(void)
 	    Root->Result = NewResult();
 	    Root->Function = FindFunction(Word);
 	    if (Root->Function == NULL) {
-		//error("Evaluator: unknown function '%s' in <%s>", Word, Expression);
+		printf("Evaluator: unknown function '%s' in <%s>", Word, Expression);
 		Root->Token = T_STRING;
 		SetResult(&Root->Result, R_STRING, "");
 	    }
@@ -680,7 +687,7 @@ static NODE *Level12(void)
 		if (Token == T_OPERATOR && Operator == O_BRC) {
 		    break;
 		} else if (Token == T_OPERATOR && Operator == O_COM) {
-		    //error("Evaluator: empty argument in <%s>", Expression);
+		    printf("Evaluator: empty argument in <%s>", Expression);
 		    LinkNode(Root, JunkNode());
 		} else {
 		    LinkNode(Root, Level01());
@@ -690,12 +697,12 @@ static NODE *Level12(void)
 
 	    /* check for closing brace */
 	    if (Token != T_OPERATOR || Operator != O_BRC) {
-		//error("Evaluator: missing closing brace in <%s>", Expression);
+		printf("Evaluator: missing closing brace in <%s>", Expression);
 	    }
 
 	    /* check number of arguments */
 	    if (Root->Function != NULL && Root->Function->argc >= 0 && Root->Function->argc != argc) {
-		//error("Evaluator: wrong number of arguments in <%s>", Expression);
+		printf("Evaluator: wrong number of arguments in <%s>", Expression);
 		while (argc < Root->Function->argc) {
 		    LinkNode(Root, JunkNode());
 		    argc++;
@@ -715,7 +722,7 @@ static NODE *Level12(void)
     }
 
     else {
-	//error("Evaluator: syntax error in <%s>: <%s>", Expression, Word);
+	printf("Evaluator: syntax error in <%s>: <%s>", Expression, Word);
 	Root = NewNode(NULL);
 	Root->Token = T_STRING;
 	SetResult(&Root->Result, R_STRING, "");
@@ -885,7 +892,7 @@ static NODE *Level03(void)
 	    Parse();
 	    LinkNode(Root, Level04());
 	} else {
-	    //error("Evaluator: syntax error in <%s>: expecting ':' got '%s'", Expression, Word);
+	    printf("Evaluator: syntax error in <%s>: expecting ':' got '%s'", Expression, Word);
 	    LinkNode(Root, JunkNode());
 	}
     }
@@ -1082,7 +1089,7 @@ static int EvalTree(NODE * Root)
 	    type = R_NUMBER;
 	    dummy = R2N(Root->Child[1]->Result);
 	    if (dummy == 0) {
-		//error("Evaluator: warning: division by zero");
+		printf("Evaluator: warning: division by zero");
 		number = 0.0;
 	    } else {
 		number = R2N(Root->Child[0]->Result) / R2N(Root->Child[1]->Result);
@@ -1093,7 +1100,7 @@ static int EvalTree(NODE * Root)
 	    type = R_NUMBER;
 	    dummy = R2N(Root->Child[1]->Result);
 	    if (dummy == 0) {
-		//error("Evaluator: warning: division by zero");
+		printf("Evaluator: warning: division by zero");
 		number = 0.0;
 	    } else {
 		number = fmod(R2N(Root->Child[0]->Result), R2N(Root->Child[1]->Result));
@@ -1111,7 +1118,7 @@ static int EvalTree(NODE * Root)
 	    break;
 
 	default:
-	    //error("Evaluator: internal error: unhandled operator <%d>", Root->Operator);
+	    printf("Evaluator: internal error: unhandled operator <%d>", Root->Operator);
 	    SetResult(&Root->Result, R_STRING, "");
 	    return -1;
 	}
@@ -1126,12 +1133,12 @@ static int EvalTree(NODE * Root)
 		free(string);
 	    return 0;
 	}
-	//error("Evaluator: internal error: unhandled type <%d>", type);
+	printf("Evaluator: internal error: unhandled type <%d>", type);
 	SetResult(&Root->Result, R_STRING, "");
 	return -1;
 
     default:
-	//error("Evaluator: internal error: unhandled token <%d>", Root->Token);
+	printf("Evaluator: internal error: unhandled token <%d>", Root->Token);
 	SetResult(&Root->Result, R_STRING, "");
 	return -1;
 
@@ -1161,7 +1168,7 @@ int Compile(const char *expression, void **tree)
     Root = Level01();
 
     if (*Word != '\0') {
-	//error("Evaluator: syntax error in <%s>: garbage <%s>", Expression, Word);
+	printf("Evaluator: syntax error in <%s>: garbage <%s>", Expression, Word);
 	free(Word);
 	Word = NULL;
 	return -1;
