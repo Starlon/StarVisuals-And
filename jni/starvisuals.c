@@ -51,7 +51,7 @@ static __inline int makeint(double t)
 char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d;";
 char frame[] = "t=t-0.01;count=count+1;";
 char beat[] = "";
-char init[] = "n=800;";
+char init[] = "n=800;count=0";
 
 void _cos(RESULT *result, RESULT *arg1) {
         double val = R2N(arg1);
@@ -118,7 +118,7 @@ int scope_load_runnable(SuperScopePrivate *priv, ScopeRunnable runnable, char *b
 int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
 {
 
-    RESULT result;
+    RESULT *result = malloc(sizeof(RESULT));
 
     SetVariableNumeric("n", priv->n);
     SetVariableNumeric("b", priv->b);
@@ -139,16 +139,16 @@ int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
 
     switch(runnable) {
         case SCOPE_RUNNABLE_INIT:
-		Eval(priv->init, &result);
+		Eval(priv->init, result);
 	break;
 	case SCOPE_RUNNABLE_BEAT:
-		Eval(priv->beat, &result);
+		Eval(priv->beat, result);
 	break;
 	case SCOPE_RUNNABLE_FRAME:
-		Eval(priv->frame, &result);
+		Eval(priv->frame, result);
 	break;
 	case SCOPE_RUNNABLE_POINT:
-		Eval(priv->point, &result);
+		Eval(priv->point, result);
 	break;
     }
 
@@ -547,10 +547,10 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
 
     scope_run(priv, SCOPE_RUNNABLE_FRAME);
 
-return;
-    if (isBeat)
+    if (isBeat && 0)
         scope_run(priv, SCOPE_RUNNABLE_BEAT);
 
+return;
     int candraw=0;
     l = priv->n;
     if (l >= 128*size)

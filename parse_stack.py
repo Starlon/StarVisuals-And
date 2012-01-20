@@ -1,3 +1,4 @@
+#!/usr/bin/python -E
 import sys
 import re
 import os

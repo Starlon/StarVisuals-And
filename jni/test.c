@@ -33,7 +33,7 @@ int main(int argc, char **argv)
     SetVariable("skip", result);
     SetVariable("drawmode", result);
 
-    Compile("d=i+v*0.2; r=t+i*PI*4; x=cos(r)*d; y=sin(r)*d", &tree);
+    Compile("d=i+v*0.2; r=t+i*PI*4; x=cos(r)*d; y=sin(r)*d;asd=asd+1", &tree);
 
     Eval(tree, result);
 
