@@ -51,21 +51,7 @@ static __inline int makeint(double t)
 char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d;";
 char frame[] = "t=t-0.01;count=count+1;";
 char beat[] = "";
-char init[] = "n=800;count=0";
-
-void _cos(RESULT *result, RESULT *arg1) {
-        double val = R2N(arg1);
-	double c = cos(val);
-	SetResult(&result, R_NUMBER, &c);
-	return;
-}
-
-void _sin(RESULT *result, RESULT *arg1) {
-        double val = R2N(arg1);
-	double s = sin(val);
-	SetResult(&result, R_NUMBER, &s);
-	return;
-}
+char init[] = "n=800;";
 
 typedef struct {
     double n, b, x, y, i, v, w, h, red, green, blue, linesize, skip, drawmode, t, d; 
@@ -117,44 +103,45 @@ int scope_load_runnable(SuperScopePrivate *priv, ScopeRunnable runnable, char *b
 
 int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
 {
+    static int first_time = 1;
 
-    RESULT *result = malloc(sizeof(RESULT));
+    RESULT result;
 
-    SetVariableNumeric("n", priv->n);
-    SetVariableNumeric("b", priv->b);
-    SetVariableNumeric("x", priv->x);
-    SetVariableNumeric("y", priv->y);
-    SetVariableNumeric("i", priv->i);
-    SetVariableNumeric("v", priv->v);
-    SetVariableNumeric("w", priv->w);
-    SetVariableNumeric("h", priv->h);
-    SetVariableNumeric("red", priv->red);
-    SetVariableNumeric("green", priv->green);
-    SetVariableNumeric("blue", priv->blue);
-    SetVariableNumeric("linesize", priv->linesize);
-    SetVariableNumeric("skip", priv->skip);
-    SetVariableNumeric("drawmode", priv->drawmode);
-    SetVariableNumeric("t", priv->t);
-    SetVariableNumeric("d", priv->d);
+    if(first_time) {
+        SetVariableNumeric("n", priv->n);
+        SetVariableNumeric("b", priv->b);
+        SetVariableNumeric("x", priv->x);
+        SetVariableNumeric("y", priv->y);
+        SetVariableNumeric("i", priv->i);
+        SetVariableNumeric("v", priv->v);
+        SetVariableNumeric("w", priv->w);
+        SetVariableNumeric("h", priv->h);
+        SetVariableNumeric("red", priv->red);
+        SetVariableNumeric("green", priv->green);
+        SetVariableNumeric("blue", priv->blue);
+        SetVariableNumeric("linesize", priv->linesize);
+        SetVariableNumeric("skip", priv->skip);
+        SetVariableNumeric("drawmode", priv->drawmode);
+        SetVariableNumeric("t", priv->t);
+        SetVariableNumeric("d", priv->d);
+        first_time = FALSE;
+    }
 
     switch(runnable) {
         case SCOPE_RUNNABLE_INIT:
-		Eval(priv->init, result);
+		Eval(priv->init, &result);
 	break;
 	case SCOPE_RUNNABLE_BEAT:
-		Eval(priv->beat, result);
+		Eval(priv->beat, &result);
 	break;
 	case SCOPE_RUNNABLE_FRAME:
-		Eval(priv->frame, result);
+		Eval(priv->frame, &result);
 	break;
 	case SCOPE_RUNNABLE_POINT:
-		Eval(priv->point, result);
+		Eval(priv->point, &result);
 	break;
     }
 
-    //(FindVariable("n"))->value = NULL;
-    VARIABLE var;
-    var.value = NULL;
     priv->n = R2N(FindVariable("n")->value);
     priv->b = R2N(FindVariable("b")->value);
     priv->x = R2N(FindVariable("x")->value);
@@ -171,7 +158,6 @@ int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
     priv->drawmode = R2N(FindVariable("drawmode")->value);
     priv->t = R2N(FindVariable("t")->value);
     priv->d = R2N(FindVariable("d")->value);
-
     return 0;
 }
 
@@ -384,6 +370,133 @@ static void init_tables(void)
     init_angles();
 }
 
+
+double PI = 3.14159;
+double E = 2.71828;
+double PHI = 1.618033;
+
+static void function_log(RESULT * result, RESULT * arg1);
+static void function_sin(RESULT * result, RESULT * arg1);
+static void function_cos(RESULT * result, RESULT * arg1);
+static void function_tan(RESULT * result, RESULT * arg1);
+static void function_asin(RESULT * result, RESULT * arg1);
+static void function_acos(RESULT * result, RESULT * arg1);
+static void function_atan(RESULT * result, RESULT * arg1);
+static void function_if(RESULT * result, RESULT * arg1, RESULT * arg2, RESULT * arg3);
+static void function_div(RESULT * result, RESULT * arg1, RESULT * arg2);
+static void function_rand(RESULT * result, RESULT * arg1, RESULT * arg2);
+
+void init_evaluator()
+{
+        RESULT *result = malloc(sizeof(RESULT));
+	memset(result, 0, sizeof(RESULT));
+
+        AddFunction("log", 1, function_log);
+        AddFunction("sin", 1, function_sin);
+        AddFunction("cos", 1, function_cos);
+        AddFunction("tan", 1, function_tan);
+        AddFunction("asin", 1, function_asin);
+        AddFunction("acos", 1, function_acos);
+        AddFunction("atan", 1, function_atan);
+        AddFunction("if", 1, function_if);
+        AddFunction("div", 1, function_div);
+        AddFunction("rand", 1, function_rand);
+
+        SetResult(&result, R_NUMBER, &PI);
+        SetVariable ("PI", result);
+
+        SetResult(&result, R_NUMBER, &E);
+        SetVariable ("E", result);
+
+        SetResult(&result, R_NUMBER, &PHI);
+        SetVariable ("PHI", result);
+
+	DelResult(result);
+	free(result);
+}
+
+static void function_log(RESULT * result, RESULT * arg1)
+{
+        double val = log(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_sin(RESULT * result, RESULT * arg1)
+{
+        double val = sin(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_cos(RESULT * result, RESULT * arg1)
+{
+        double val = cos(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_tan(RESULT * result, RESULT * arg1)
+{
+        double val = tan(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_asin(RESULT * result, RESULT * arg1)
+{
+        double val = asin(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_acos(RESULT * result, RESULT * arg1)
+{
+        double val = acos(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_atan(RESULT * result, RESULT * arg1)
+{
+        double val = atan(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_if(RESULT * result, RESULT * arg1, RESULT * arg2, RESULT * arg3)
+{
+        double a = R2N(arg1);
+        double b = R2N(arg2);
+        double c = R2N(arg3);
+        double val = (c != 0.0) ? a : b;
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_div(RESULT * result, RESULT * arg1, RESULT * arg2)
+{
+        double a = R2N(arg1);
+        double b = R2N(arg2);
+        double val = (a == 0) ? 0 : (b / a);
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_rand(RESULT * result, RESULT * arg1, RESULT * arg2)
+{
+        int a, b, seed, val;
+        a = R2N(arg1);
+        b = R2N(arg1);
+
+        seed = time(NULL);
+
+        srand(seed);
+
+        val = (rand() % (b - a)) + a;
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
 static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
 {
     Fixed ft  = FIXED_FROM_FLOAT(t/1000.);
@@ -547,15 +660,16 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
 
     scope_run(priv, SCOPE_RUNNABLE_FRAME);
 
-    if (isBeat && 0)
+    if (isBeat && FALSE)
         scope_run(priv, SCOPE_RUNNABLE_BEAT);
 
-return;
     int candraw=0;
     l = priv->n;
     if (l >= 128*size)
         l = 128*size - 1;
 
+LOGI("fuckity %d", l);
+    l = 50;
     for (a=0; a < l; a++) 
     {
         double r=(a*size)/(double)l;
@@ -702,7 +816,7 @@ struct engine {
     Stats stats;
 
     int animating;
-    SuperScopePrivate *priv;
+    SuperScopePrivate priv;
 };
 
 static void engine_draw_frame(struct engine* engine) {
@@ -725,7 +839,7 @@ static void engine_draw_frame(struct engine* engine) {
     int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
 
     /* Now fill the values with a nice little plasma */
-    fill_starvisuals(engine->priv, &buffer, time_ms);
+    fill_starvisuals(&engine->priv, &buffer, time_ms);
     //fill_plasma(&buffer, time_ms);
 
     ANativeWindow_unlockAndPost(engine->app->window);
@@ -779,8 +893,7 @@ void android_main(struct android_app* state) {
     app_dummy();
 
     memset(&engine, 0, sizeof(engine));
-    engine.priv = malloc(sizeof(SuperScopePrivate));
-    memset(engine.priv, 0, sizeof(SuperScopePrivate));
+    engine.priv.needs_init = TRUE;
     state->userData = &engine;
     state->onAppCmd = engine_handle_cmd;
     state->onInputEvent = engine_handle_input;
@@ -793,6 +906,8 @@ void android_main(struct android_app* state) {
 
     stats_init(&engine.stats);
 
+    init_evaluator();
+
     // loop waiting for stuff to do.
 
     while (1) {
@@ -804,6 +919,7 @@ void android_main(struct android_app* state) {
         // If not animating, we will block forever waiting for events.
         // If animating, we loop until all events are read, then continue
         // to draw the next frame of animation.
+/*
         while ((ident=ALooper_pollAll(engine.animating ? 0 : -1, NULL, &events,
                 (void**)&source)) >= 0) {
 
@@ -819,6 +935,7 @@ void android_main(struct android_app* state) {
                 return;
             }
         }
+*/
 
         if (engine.animating) {
             engine_draw_frame(&engine);

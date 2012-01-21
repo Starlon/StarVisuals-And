@@ -14,7 +14,6 @@ def parsestack( lines, libname ):
         m = crashline.match(l)
         if m:
             addr =  m.groups()[0]
-            print addr
             ret.append(int(addr,16))
     return ret
 
@@ -60,10 +59,6 @@ if __name__=="__main__":
     stack = parsestack( file(stack).read().split('\n'), libname )
     for addr in stack:
         for func, funcstart, segstart, segend, code in asm:
-            #print "-----------"
-            #print addr
-            #print segstart
-            #print segend
             if addr >= segstart and addr <= segend:
                 print "0x%08x:%32s + 0x%04x %s" % ( addr, func, addr-funcstart, "".join(["\n"+x for x in code]))
 

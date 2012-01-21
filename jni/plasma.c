@@ -471,6 +471,7 @@ static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
 
 static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buffer, double  t)
 {
+	static int www = 1;
     //LVAVSPipeline *pipeline = priv->pipeline;
     int32_t *buf = buffer->bits;
     int isBeat;
@@ -480,8 +481,9 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
     float pcmbuf[512];
     int size = 256;
 
-    if(priv->needs_init) {
+    if(www) {
         priv->needs_init = FALSE;
+	www = FALSE;
         scope_run(priv, SCOPE_RUNNABLE_INIT);
     }
 

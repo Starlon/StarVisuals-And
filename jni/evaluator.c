@@ -210,8 +210,8 @@ void DelResult(RESULT * result)
 static void FreeResult(RESULT * result)
 {
     if (result != NULL) {
-	//DelResult(result);
-	//free(result);
+	DelResult(result);
+	free(result);
     }
 }
 
@@ -390,6 +390,7 @@ int SetVariable(const char *name, RESULT * value)
     Variable[nVariable - 1].value = NULL;
     CopyResult(&Variable[nVariable - 1].value, value);
 
+    printf("set variable\n");
     return 0;
 }
 
