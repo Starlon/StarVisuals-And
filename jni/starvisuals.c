@@ -35,7 +35,7 @@
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
 /* Set to 1 to enable debug log traces. */
-#define DEBUG 0
+#define DEBUG 1
 
 /* Set to 1 to optimize memory stores when generating plasma. */
 #define OPTIMIZE_WRITES  1
@@ -49,7 +49,8 @@ static __inline int makeint(double t)
 }
 
 char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d;";
-char frame[] = "t=t-0.01;count=count+1;";
+//char frame[] = "t=t-0.01;count=count+1;";
+char frame[] = "";
 char beat[] = "";
 char init[] = "n=800;";
 
@@ -386,7 +387,7 @@ static void function_if(RESULT * result, RESULT * arg1, RESULT * arg2, RESULT * 
 static void function_div(RESULT * result, RESULT * arg1, RESULT * arg2);
 static void function_rand(RESULT * result, RESULT * arg1, RESULT * arg2);
 
-void init_evaluator()
+void init_evaluator(SuperScopePrivate *priv)
 {
         RESULT *result = malloc(sizeof(RESULT));
 	memset(result, 0, sizeof(RESULT));
@@ -413,6 +414,12 @@ void init_evaluator()
 
 	DelResult(result);
 	free(result);
+
+		
+	scope_load_runnable(priv, SCOPE_RUNNABLE_INIT, init);
+	scope_load_runnable(priv, SCOPE_RUNNABLE_BEAT, beat);
+	scope_load_runnable(priv, SCOPE_RUNNABLE_FRAME, frame);
+	scope_load_runnable(priv, SCOPE_RUNNABLE_POINT, point);
 }
 
 static void function_log(RESULT * result, RESULT * arg1)
@@ -584,20 +591,18 @@ static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
 
 static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buffer, double  t)
 {
-    //LVAVSPipeline *pipeline = priv->pipeline;
     int32_t *buf = buffer->bits;
     int isBeat;
     int i;
 
-    //VisBuffer pcm;
     float pcmbuf[512];
     int size = 256;
 
     if(priv->needs_init) {
         priv->needs_init = FALSE;
-        scope_run(priv, SCOPE_RUNNABLE_INIT);
+        //scope_run(priv, SCOPE_RUNNABLE_INIT);
     }
-
+return;
     int a, l, lx = 0, ly = 0, x = 0, y = 0;
     int32_t current_color;
     int ws=(priv->channel_source&4)?1:0;
@@ -669,6 +674,7 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
         l = 128*size - 1;
 
 LOGI("fuckity %d", l);
+return;
     l = 50;
     for (a=0; a < l; a++) 
     {
@@ -900,13 +906,13 @@ void android_main(struct android_app* state) {
     engine.app = state;
 
     if (!init) {
-        init_tables();
+        //init_tables();
         init = 1;
     }
 
     stats_init(&engine.stats);
 
-    init_evaluator();
+    init_evaluator(&engine.priv);
 
     // loop waiting for stuff to do.
 
@@ -919,7 +925,6 @@ void android_main(struct android_app* state) {
         // If not animating, we will block forever waiting for events.
         // If animating, we loop until all events are read, then continue
         // to draw the next frame of animation.
-/*
         while ((ident=ALooper_pollAll(engine.animating ? 0 : -1, NULL, &events,
                 (void**)&source)) >= 0) {
 
@@ -935,10 +940,9 @@ void android_main(struct android_app* state) {
                 return;
             }
         }
-*/
 
         if (engine.animating) {
-            engine_draw_frame(&engine);
+            //engine_draw_frame(&engine);
         }
     }
 }
