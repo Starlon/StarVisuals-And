@@ -48,11 +48,15 @@ static __inline int makeint(double t)
   return (int)(t*255.0);
 }
 
-char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d;";
-//char frame[] = "t=t-0.01;count=count+1;";
-char frame[] = "";
+/*char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d";
+char frame[] = "t=t-0.01;count=count+1";
 char beat[] = "";
-char init[] = "n=800;";
+char init[] = "n=800";
+*/
+char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d";
+char frame[] = "t=1";
+char beat[] = "";
+char init[] = "n=800";
 
 typedef struct {
     double n, b, x, y, i, v, w, h, red, green, blue, linesize, skip, drawmode, t, d; 
@@ -87,16 +91,16 @@ int scope_load_runnable(SuperScopePrivate *priv, ScopeRunnable runnable, char *b
 {
     switch((int)runnable) {
         case SCOPE_RUNNABLE_INIT:
-		Compile(buf, priv->init);
+		Compile(buf, &priv->init);
 	break;
 	case SCOPE_RUNNABLE_BEAT:
-		Compile(buf, priv->beat);
+		Compile(buf, &priv->beat);
 	break;
 	case SCOPE_RUNNABLE_FRAME:
-		Compile(buf, priv->frame);
+		Compile(buf, &priv->frame);
 	break;
 	case SCOPE_RUNNABLE_POINT:
-		Compile(buf, priv->point);
+		Compile(buf, &priv->point);
 	break;
     }
     return 0;
@@ -108,7 +112,6 @@ int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
 
     RESULT result;
 
-    if(first_time) {
         SetVariableNumeric("n", priv->n);
         SetVariableNumeric("b", priv->b);
         SetVariableNumeric("x", priv->x);
@@ -126,8 +129,6 @@ int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
         SetVariableNumeric("t", priv->t);
         SetVariableNumeric("d", priv->d);
         first_time = FALSE;
-    }
-
     switch(runnable) {
         case SCOPE_RUNNABLE_INIT:
 		Eval(priv->init, &result);
@@ -142,7 +143,6 @@ int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
 		Eval(priv->point, &result);
 	break;
     }
-
     priv->n = R2N(FindVariable("n")->value);
     priv->b = R2N(FindVariable("b")->value);
     priv->x = R2N(FindVariable("x")->value);
@@ -399,8 +399,8 @@ void init_evaluator(SuperScopePrivate *priv)
         AddFunction("asin", 1, function_asin);
         AddFunction("acos", 1, function_acos);
         AddFunction("atan", 1, function_atan);
-        AddFunction("if", 1, function_if);
-        AddFunction("div", 1, function_div);
+        AddFunction("if", 2, function_if);
+        AddFunction("div", 2, function_div);
         AddFunction("rand", 1, function_rand);
 
         SetResult(&result, R_NUMBER, &PI);
@@ -600,9 +600,8 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
 
     if(priv->needs_init) {
         priv->needs_init = FALSE;
-        //scope_run(priv, SCOPE_RUNNABLE_INIT);
+        scope_run(priv, SCOPE_RUNNABLE_INIT);
     }
-return;
     int a, l, lx = 0, ly = 0, x = 0, y = 0;
     int32_t current_color;
     int ws=(priv->channel_source&4)?1:0;
@@ -628,10 +627,12 @@ return;
     {
 	pcmbuf[x] = 1; //pipeline->audiodata[ws^1][priv->channel_source&3][x];
     }  
+  
     priv->color_pos++;
 
     //if(priv->color_pos >= priv->pal.ncolors * 64) priv->color_pos = 0;
 
+#if 0
     {
         int p = priv->color_pos/64;
         int r = priv->color_pos&63;
@@ -652,7 +653,9 @@ return;
 
         current_color = r1|(r2<<8)|(r3<<16)|(255<<24);
     }
+#endif
 
+/*
     priv->h = buffer->height;
     priv->w = buffer->width;
     priv->b = isBeat?1.0:0.0;
@@ -662,7 +665,7 @@ return;
     priv->skip = 0.0;
     priv->linesize = (double) ((priv->blendmode&0xff0000)>>16);
     priv->drawmode = priv->drawmode ? 1.0 : 0.0;
-
+*/
     scope_run(priv, SCOPE_RUNNABLE_FRAME);
 
     if (isBeat && FALSE)
@@ -673,9 +676,6 @@ return;
     if (l >= 128*size)
         l = 128*size - 1;
 
-LOGI("fuckity %d", l);
-return;
-    l = 50;
     for (a=0; a < l; a++) 
     {
         double r=(a*size)/(double)l;
@@ -874,6 +874,7 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
 
 static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
     struct engine* engine = (struct engine*)app->userData;
+    return;
     switch (cmd) {
         case APP_CMD_INIT_WINDOW:
             if (engine->app->window != NULL) {
@@ -942,7 +943,7 @@ void android_main(struct android_app* state) {
         }
 
         if (engine.animating) {
-            //engine_draw_frame(&engine);
+            engine_draw_frame(&engine);
         }
     }
 }

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <string.h>
 
 #include "evaluator.h"
 
@@ -24,6 +25,7 @@ static void function_rand(RESULT * result, RESULT * arg1, RESULT * arg2);
 void init_evaluator()
 {
         RESULT *result = malloc(sizeof(RESULT));
+        memset(result, 0, sizeof(RESULT));
 
         AddFunction("log", 1, function_log);
         AddFunction("sin", 1, function_sin);

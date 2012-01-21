@@ -77,7 +77,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <setjmp.h>
-#include <android/log.h>
+//#include <android/log.h>
 
 #include "evaluator.h"
 
@@ -85,10 +85,12 @@
 #include <dmalloc.h>
 #endif
 
-#define  LOG_TAG    "libplasma"
+/*
+#define  LOG_TAG    "starvisuals.evaluator"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
+#define  printf(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+*/
 
 /* string buffer chunk size */
 #define CHUNK_SIZE 16
@@ -327,7 +329,7 @@ double R2N(RESULT * result)
 	return result->number;
     }
 
-    LOGW("Evaluator: internal error: invalid result type %d", result->type);
+    printf("Evaluator: internal error: invalid result type %d", result->type);
     return 0.0;
 }
 
@@ -357,7 +359,7 @@ char *R2S(RESULT * result)
 	return result->string;
     }
 
-    LOGW("Evaluator: internal error: invalid result type %d", result->type);
+    printf("Evaluator: internal error: invalid result type %d", result->type);
     return NULL;
 
 }
@@ -396,7 +398,6 @@ int SetVariable(const char *name, RESULT * value)
     Variable[nVariable - 1].value = NULL;
     CopyResult(&Variable[nVariable - 1].value, value);
 
-    LOGW("set variable\n");
     return 0;
 }
 
@@ -655,7 +656,7 @@ static NODE *Level12(void)
 	Parse();
 	Root = Level01();
 	if (Token != T_OPERATOR || Operator != O_BRC) {
-	    LOGW("Evaluator: unbalanced parentheses in <%s>", Expression);
+	    printf("Evaluator: unbalanced parentheses in <%s>", Expression);
 	    LinkNode(Root, JunkNode());
 	}
     }
@@ -693,7 +694,7 @@ static NODE *Level12(void)
 		if (Token == T_OPERATOR && Operator == O_BRC) {
 		    break;
 		} else if (Token == T_OPERATOR && Operator == O_COM) {
-		    LOGW("Evaluator: empty argument in <%s>", Expression);
+		    printf("Evaluator: empty argument in <%s>", Expression);
 		    LinkNode(Root, JunkNode());
 		} else {
 		    LinkNode(Root, Level01());
@@ -898,7 +899,7 @@ static NODE *Level03(void)
 	    Parse();
 	    LinkNode(Root, Level04());
 	} else {
-	    LOGW("Evaluator: syntax error in <%s>: expecting ':' got '%s'", Expression, Word);
+	    printf("Evaluator: syntax error in <%s>: expecting ':' got '%s'", Expression, Word);
 	    LinkNode(Root, JunkNode());
 	}
     }
@@ -1124,7 +1125,7 @@ static int EvalTree(NODE * Root)
 	    break;
 
 	default:
-	    LOGW("Evaluator: internal error: unhandled operator <%d>", Root->Operator);
+	    printf("Evaluator: internal error: unhandled operator <%d>", Root->Operator);
 	    SetResult(&Root->Result, R_STRING, "");
 	    return -1;
 	}
