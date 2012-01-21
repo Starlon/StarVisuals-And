@@ -451,7 +451,8 @@ static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
 
 static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buffer, double  t)
 {
-    int32_t *buf = buffer->bits;
+    int16_t *buf = buffer->bits;
+    memset(buf, 0, buffer->stride * buffer->height * 2);
     int isBeat;
     int i;
 
@@ -499,7 +500,7 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
         int r1, r2, r3;
         //c1 = visual_color_to_uint32(&priv->pal.colors[p]);
 	c1 = 0x00ff00;
-        c2 = 0xff0000;
+        c2 = 0xffffff;
 	/*
         if(p+1 < priv->pal.ncolors)
             c2=0x0000ff; //visual_color_to_uint32(&priv->pal.colors[p+1]);
@@ -570,8 +571,8 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
     }
 
 
-    //LOGI("width=%d height=%d stride=%d format=%d", buffer->width, buffer->height,
-    //        buffer->stride, buffer->format);
+    LOGI("width=%d height=%d stride=%d format=%d", buffer->width, buffer->height,
+            buffer->stride, buffer->format);
 }
 
 double PI = 3.14159;
