@@ -379,24 +379,25 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 			break;
 		
 	}
-	int size = 1;
 
-	VisVideo *src, *dst, *vid;
-	VisRectangle *drect, *srect;
+	VisVideo *src, *dst, *scalevid, *image;
 
 	src = visual_bitmap_load_new_video ("/mnt/sdcard/starvisuals/bg.bmp");
-	//VISUAL_VIDEO_SCALE_NEAREST  = 0,    /**< Nearest neighbour. */
-	//VISUAL_VIDEO_SCALE_BILINEAR = 1	    /**< Bilinearly interpolated. */
 
 
 	dst = visual_video_new_with_buffer(src->width, src->height, visual_video_depth_enum_from_value(depth));
 	visual_video_depth_transform(dst, src);
 
-	vid = visual_video_new_with_buffer(src->width * size, src->height * size, visual_video_depth_enum_from_value(depth));
+	scalevid = visual_video_new_with_buffer(src->width * .30, src->height * .30, visual_video_depth_enum_from_value(depth));
 
-	visual_video_blit_overlay(vid, dst, 0, 0, FALSE);
+	image = visual_video_new_with_buffer(buffer->width, buffer->height, visual_video_depth_enum_from_value(depth));
 
-	void *imgpix = visual_video_get_pixels(vid);
+
+	visual_video_scale (scalevid, dst, VISUAL_VIDEO_SCALE_BILINEAR);
+
+	visual_video_blit_overlay(image, scalevid, 0, 0, FALSE);
+
+	void *imgpix = visual_video_get_pixels(image);
 	void *pixels = buffer->bits;
 	int x, y;
 	VisColor *col = visual_color_new();
@@ -404,31 +405,21 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 	{
 		for(y = 0; y < buffer->height; y++)
 		{
-			if(x < buffer->width && y < buffer->height && x < vid->width && y < vid->height)
+			if(x < buffer->width && y < buffer->height)
 			{
-				int n = y * buffer->stride + x;
+				int n = (y * buffer->width + x);
 				if(depth == 16) 
 				{
 					
  					int16_t rgb = *(int16_t*)(imgpix + n);
-					visual_color_from_uint16(col, rgb);
-					
-					int16_t *pix = (int16_t *)pixels;
-					pix[n] = col->b;
-					pix[n+1] = col->g;
-					pix[n+2] = col->r;
-					pix[n+3] = col->a;
-					
+					int16_t *pix = (int16_t*)(pixels + n);
+					*pix = rgb;
 				} 
 				else
 				{
 					int32_t rgb = *(int32_t*)(imgpix + n);
-					visual_color_from_uint32(col, rgb);
-					int32_t *pix = (int32_t *)pixels;
-					pix[n] = col->r;
-					pix[n+1] = col->g;
-					pix[n+2] = col->b;
-					pix[n+3] = col->a;
+					int32_t *pix = (int32_t*)(imgpix + n);
+					*pix = rgb;
 				}
 			}
 
@@ -436,6 +427,8 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 	}
 	visual_video_free_buffer(src);
 	visual_video_free_buffer(dst);
+	visual_video_free_buffer(vid);
+	visual_video_free_buffer(scalevid);
 
 }
 
