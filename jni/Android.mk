@@ -14,7 +14,6 @@
 #
 
 LOCAL_PATH := $(call my-dir)
-include $(LOCAL_PATH)/libvisual.mk
 
 include $(CLEAR_VARS)
 LOCAL_MODULE	:= evaluator
@@ -25,13 +24,20 @@ LOCAL_CFLAGS	:= -O0 -g
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
+LOCAL_MODULE	:= libvisual
+LOCAL_SRC_FILES := lv_utils.c  lv_beat.c  lv_cache.c  lv_cpu.c  lv_gl.c  lv_libvisual.c  lv_mem.c  lv_palette.c  lv_rectangle.c  lv_time.c  lv_video.c  lv_bin.c  lv_collection.c  lv_error.c  lv_hashlist.c  lv_list.c  lv_morph.c   lv_param.c   lv_ringbuffer.c  lv_transform.c  lv_video_simd.c  lv_actor.c  lv_bmp.c   lv_color.c   lv_event.c   lv_hashmap.c  lv_log.c  lv_object.c  lv_plugin.c  lv_songinfo.c  lv_ui.c lv_audio.c  lv_buffer.c  lv_config.c  lv_fourier.c  lv_input.c  lv_math.c  lv_os.c  lv_random.c  lv_thread.c
+LOCAL_LDLIBS	:= -Wall
+LOCAL_CFLAGS	:= -O0 -g
+
+include $(BUILD_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
 
 LOCAL_MODULE    := starvisuals
 LOCAL_SRC_FILES := starvisuals.c
 LOCAL_LDLIBS    := -lm -llog -landroid -Wall
-LOCAL_CFLAGS	:= -O0 -g
-#LOCAL_STATIC_LIBRARIES += lv_bin     lv_collection  lv_error    lv_hashlist   lv_list  lv_morph    lv_param      lv_ringbuffer  lv_transform  lv_video_simd  lv_actor   lv_bmp     lv_color       lv_event    lv_hashmap    lv_log   lv_object   lv_plugin     lv_songinfo    lv_ui         plasma lv_audio   lv_buffer  lv_config      lv_fourier  lv_input      lv_math  lv_os       lv_random     lv_thread      lv_utils      lv_beat    lv_cache   lv_cpu         lv_gl       lv_libvisual  lv_mem   lv_palette  lv_rectangle  lv_time        lv_video lv_libvisual
-LOCAL_STATIC_LIBRARIES += android_native_app_glue evaluator
+LOCAL_CFLAGS	:= -O0 -g -Wall
+LOCAL_STATIC_LIBRARIES := android_native_app_glue evaluator libvisual
 
 include $(BUILD_SHARED_LIBRARY)
 

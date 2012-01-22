@@ -26,8 +26,6 @@
 typedef unsigned int visual_size_t;
 #define VISUAL_SIZE_T_FORMAT	"u"
 
-#define VISUAL_ARCH_X86
-
 #define VISUAL_OS_LINUX
 
 #define VISUAL_HAVE_THREADS

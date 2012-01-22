@@ -28,6 +28,8 @@
 #include <math.h>
 
 #include "evaluator.h"
+#include "libvisual.h"
+#include "lv_video.h"
 
 #define  LOG_TAG    "starvisuals"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
@@ -70,9 +72,6 @@ typedef struct {
 
 } SuperScopePrivate;
 
-
-int TRUE = 1;
-int FALSE = 0;
 
 typedef enum scope_runnable ScopeRunnable;
 
@@ -362,6 +361,82 @@ static void init_tables(void)
 {
     init_palette();
     init_angles();
+}
+
+static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
+{
+	int depth = 32;
+	switch(buffer->format)
+	{
+		case WINDOW_FORMAT_RGBA_8888:
+			depth = 32;
+			break;
+		case WINDOW_FORMAT_RGBX_8888:
+			depth = 24;
+			break;
+		case WINDOW_FORMAT_RGB_565:
+			depth = 16;
+			break;
+		
+	}
+	int size = 1;
+
+	VisVideo *src, *dst, *vid;
+	VisRectangle *drect, *srect;
+
+	src = visual_bitmap_load_new_video ("/mnt/sdcard/starvisuals/bg.bmp");
+	//VISUAL_VIDEO_SCALE_NEAREST  = 0,    /**< Nearest neighbour. */
+	//VISUAL_VIDEO_SCALE_BILINEAR = 1	    /**< Bilinearly interpolated. */
+
+
+	dst = visual_video_new_with_buffer(src->width, src->height, visual_video_depth_enum_from_value(depth));
+	visual_video_depth_transform(dst, src);
+
+	vid = visual_video_new_with_buffer(src->width * size, src->height * size, visual_video_depth_enum_from_value(depth));
+
+	visual_video_blit_overlay(vid, dst, 0, 0, FALSE);
+
+	void *imgpix = visual_video_get_pixels(vid);
+	void *pixels = buffer->bits;
+	int x, y;
+	VisColor *col = visual_color_new();
+	for(x = 0; x < buffer->width; x++)
+	{
+		for(y = 0; y < buffer->height; y++)
+		{
+			if(x < buffer->width && y < buffer->height && x < vid->width && y < vid->height)
+			{
+				int n = y * buffer->stride + x;
+				if(depth == 16) 
+				{
+					
+ 					int16_t rgb = *(int16_t*)(imgpix + n);
+					visual_color_from_uint16(col, rgb);
+					
+					int16_t *pix = (int16_t *)pixels;
+					pix[n] = col->b;
+					pix[n+1] = col->g;
+					pix[n+2] = col->r;
+					pix[n+3] = col->a;
+					
+				} 
+				else
+				{
+					int32_t rgb = *(int32_t*)(imgpix + n);
+					visual_color_from_uint32(col, rgb);
+					int32_t *pix = (int32_t *)pixels;
+					pix[n] = col->r;
+					pix[n+1] = col->g;
+					pix[n+2] = col->b;
+					pix[n+3] = col->a;
+				}
+			}
+
+		}
+	}
+	visual_video_free_buffer(src);
+	visual_video_free_buffer(dst);
+
 }
 
 static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
@@ -866,8 +941,9 @@ static void engine_draw_frame(struct engine* engine) {
     int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
 
     /* Now fill the values with a nice little plasma */
-    fill_starvisuals(engine->priv, &buffer, time_ms);
+    //fill_starvisuals(engine->priv, &buffer, time_ms);
     //fill_plasma(&buffer, time_ms);
+    fill_aurora(&buffer, time_ms);
 
     ANativeWindow_unlockAndPost(engine->app->window);
 
@@ -876,6 +952,7 @@ static void engine_draw_frame(struct engine* engine) {
 
 static int engine_term_display(struct engine* engine) {
     engine->animating = 0;
+    return 0;
 }
 
 static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) {

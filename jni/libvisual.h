@@ -24,7 +24,7 @@
 #ifndef LV_LIBVISUAL_H
 #define LV_LIBVISUAL_H
 
-#include "lvconfig.h>
+#include "lvconfig.h"
 
 #include "lv_bits.h"
 #include "lv_time.h"
