@@ -1,5 +1,6 @@
 #!/bin/bash
 
+adb -e install -r bin/starvisuals-debug.apk
 adb -e shell mkdir /mnt/sdcard/starvisuals
 adb -e shell mkdir /mnt/sdcard/starvisuals/plugins
 adb -e shell mkdir /mnt/sdcard/starvisuals/plugins/input
