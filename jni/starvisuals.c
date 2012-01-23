@@ -377,7 +377,7 @@ static void init_tables(SuperScopePrivate *priv)
 
 static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 {
-	int x, y;
+	int x, y, h, w;
 	int depth = 32;
 	switch(buffer->format)
 	{
@@ -393,38 +393,22 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 		
 	}
 
-	VisVideo *image, *src, *dst, *scalevid, *squarevid, *rotatevid;
+	VisVideo *image, *src, *dst, *scalevid, *rotatevid;
 	VisRectangle imagerect, scalevidrect;
 
-//	visual_video_set_attributes(&image, buffer->width, buffer->height, buffer->stride,
-//		visual_video_depth_enum_from_value(depth));
-//	visual_video_set_buffer(&image, buffer->bits);
+	image = visual_video_new();
+	visual_video_set_attributes(image, buffer->width, buffer->height, buffer->stride * 2,
+		visual_video_depth_enum_from_value(depth));
+	visual_video_set_buffer(image, buffer->bits);
 
-
-
-	image = visual_video_new_with_buffer(buffer->width, buffer->height, visual_video_depth_enum_from_value(depth));
 
 	src = visual_bitmap_load_new_video ("/mnt/sdcard/starvisuals/bg.bmp");
-
 
 	dst = visual_video_new_with_buffer(src->width, src->height, visual_video_depth_enum_from_value(depth));
 	visual_video_depth_transform(dst, src);
 
-	int blockswide = 3;
-	int blocksize = buffer->width / blockswide;
-	squarevid = visual_video_new_with_buffer(blocksize, blocksize, visual_video_depth_enum_from_value(depth));
-
-
-	double scale = 1;
-	int w = image->width * scale;
-	int h = image->height * scale;
-	scalevid = visual_video_new_with_buffer(w, h, 
-		visual_video_depth_enum_from_value(depth));
-	//visual_video_scale(scalevid, image, VISUAL_VIDEO_SCALE_NEAREST);
-
 
 	rotatevid = visual_video_new_with_buffer(dst->height, dst->width, visual_video_depth_enum_from_value(depth));
-
 	visual_video_rotate(rotatevid, dst, VISUAL_VIDEO_ROTATE_90);
 	visual_video_fill_color(image, visual_color_black());
 	VisRectangle rect;
@@ -432,25 +416,23 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 	h = rotatevid->height < image->height ? rotatevid->height : image->height;
 	visual_rectangle_set(&rect, 0, 0, w, h);
 	visual_video_blit_overlay_rectangle(image, &rect, rotatevid, &rect, FALSE);
-/*
 
-	for( x = 0; x < blockswide && x * blocksize < buffer->width; x++) 
-	{
-		for( y = 0; y < buffer->height; y+=blocksize) {
-			VisRectangle rect1, rect2;
-			visual_rectangle_set(&rect1, 0, 0, blocksize, blocksize);
-			visual_rectangle_set(&rect2, blocksize * x, y, blocksize, blocksize); 
-			visual_video_blit_overlay_rectangle(squarevid, &rect1, image, &rect2, FALSE);
-			visual_video_rotate(rotatevid, squarevid, VISUAL_VIDEO_ROTATE_90);
-			visual_video_blit_overlay(image, rotatevid, y, x * blocksize, FALSE);
-		}
-	}
-*/
+	static double scale = 0;
+	scale = scale + .10;
+	scale = (((int)(scale * 100)) % 100) / 100.0;
+	w = image->width * scale;
+	h = image->height * scale;
+	scalevid = visual_video_new_with_buffer(w, h, 
+		visual_video_depth_enum_from_value(depth));
+	visual_video_scale(scalevid, image, VISUAL_VIDEO_SCALE_NEAREST);
+	visual_video_fill_color(image, visual_color_black());
+	visual_video_blit_overlay_rectangle(image, &rect, scalevid, &rect, FALSE);
 
 	
+/*
 	void *imgpix = visual_video_get_pixels(image);
 	void *pixels = buffer->bits;
-	for(x = 0; x < image->width && x < buffer->width; x++)
+	if(0)for(x = 0; x < image->width && x < buffer->width; x++)
 	{
 		for(y = 0; y < image->height && y < buffer->height; y++)
 		{
@@ -474,10 +456,10 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 
 		}
 	}
+*/
 	visual_video_free_buffer(image);
 	visual_video_free_buffer(src);
 	visual_video_free_buffer(scalevid);
-	visual_video_free_buffer(squarevid);
 	visual_video_free_buffer(rotatevid);
 
 	return;
