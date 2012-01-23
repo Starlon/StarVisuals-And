@@ -409,9 +409,6 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 		visual_video_depth_enum_from_value(depth));
 	visual_video_set_buffer(image, buffer->bits);
 
-        final = visual_video_new_with_buffer(buffer->width, buffer->height,
-		visual_video_depth_enum_from_value(depth));
-
 	src = visual_bitmap_load_new_video ("/mnt/sdcard/starvisuals/bg.bmp");
 
 	dst = visual_video_new_with_buffer(src->width, src->height, visual_video_depth_enum_from_value(depth));
@@ -435,10 +432,10 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
         visual_video_composite_set_type(scalevid, VISUAL_VIDEO_COMPOSITE_TYPE_SURFACE);
 	visual_video_blit_overlay_rectangle(image, &rect, scalevid, &rect, TRUE);
 
+
 	visual_video_free_buffer(image);
 	visual_video_free_buffer(src);
 	visual_video_free_buffer(scalevid);
-	visual_video_free_buffer(final);
 
 	return;
 }
