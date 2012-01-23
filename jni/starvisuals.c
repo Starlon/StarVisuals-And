@@ -61,7 +61,7 @@ typedef struct {
 
     int needs_init;
     int color_pos;
-    int pal;
+    VisPalette pal;
     int channel_source;
     int blendmode;
 
@@ -322,7 +322,7 @@ static uint16_t  make565(int red, int green, int blue)
                        ((blue  >> 3) & 0x001f) );
 }
 
-static void init_palette(void)
+static void init_palette(SuperScopePrivate *priv)
 {
     int  nn, mm = 0;
     /* fun with colors */
@@ -345,6 +345,18 @@ static void init_palette(void)
         int  jj = (nn-mm)*4*255/PALETTE_SIZE;
         palette[nn] = make565(jj, 0, 255);
     }
+
+    visual_palette_allocate_colors(&priv->pal, PALETTE_SIZE);
+    for(nn = 0; nn < priv->pal.ncolors; nn++)
+    {
+	VisColor col;
+        visual_color_from_uint16(&col, palette[nn]);
+        priv->pal.colors[nn].r = col.r;
+	priv->pal.colors[nn].g = col.g;
+        priv->pal.colors[nn].b = col.b;
+        priv->pal.colors[nn].a = col.a;
+    }
+
 }
 
 static __inline__ uint16_t  palette_from_fixed( Fixed  x )
@@ -357,9 +369,9 @@ static __inline__ uint16_t  palette_from_fixed( Fixed  x )
 
 /* Angles expressed as fixed point radians */
 
-static void init_tables(void)
+static void init_tables(SuperScopePrivate *priv)
 {
-    init_palette();
+    init_palette(priv);
     init_angles();
 }
 
@@ -427,8 +439,8 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 	}
 	visual_video_free_buffer(src);
 	visual_video_free_buffer(dst);
-	visual_video_free_buffer(vid);
 	visual_video_free_buffer(scalevid);
+	visual_video_free_buffer(image);
 
 }
 
@@ -557,23 +569,23 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
 	pcmbuf[x] = 1; //pipeline->audiodata[ws^1][priv->channel_source&3][x];
     }  
   
-    priv->color_pos++;
+    priv->color_pos+=10;
 
-    //if(priv->color_pos >= priv->pal.ncolors * 64) priv->color_pos = 0;
+    if(priv->color_pos >= priv->pal.ncolors * 64) 
+	priv->color_pos = 0;
 
     {
         int p = priv->color_pos/64;
         int r = priv->color_pos&63;
         int c1, c2;
         int r1, r2, r3;
-        //c1 = visual_color_to_uint32(&priv->pal.colors[p]);
-	c1 = 0x00ff00;
-        c2 = 0xffffff;
-	/*
+        c1 = visual_color_to_uint32(&priv->pal.colors[p]);
+	//c1 = 0x00ff00;
+        //c2 = 0xffffff;
         if(p+1 < priv->pal.ncolors)
-            c2=0x0000ff; //visual_color_to_uint32(&priv->pal.colors[p+1]);
-        else c2 = 0xff0000;//visual_color_to_uint32(&priv->pal.colors[0]);
-	*/
+            c2 = visual_color_to_uint32(&priv->pal.colors[p+1]);
+        else 
+            c2 = visual_color_to_uint32(&priv->pal.colors[0]);
 
         r1 = (((c1&255)*(63-r))+((c2&255)*4))/64;
         r2 = ((((c1>>8)&255)*(63-r))+(((c2>>8)&255)*4))/64;
@@ -934,9 +946,9 @@ static void engine_draw_frame(struct engine* engine) {
     int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
 
     /* Now fill the values with a nice little plasma */
-    //fill_starvisuals(engine->priv, &buffer, time_ms);
+    fill_starvisuals(engine->priv, &buffer, time_ms);
     //fill_plasma(&buffer, time_ms);
-    fill_aurora(&buffer, time_ms);
+    //fill_aurora(&buffer, time_ms);
 
     ANativeWindow_unlockAndPost(engine->app->window);
 
@@ -963,10 +975,32 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
     return 0;
 }
 
+static void reset_superscope(SuperScopePrivate *priv)
+{
+	priv->n = 50;
+	priv->b = 0;
+	priv->x = 0;
+	priv->y = 0;
+	priv->i = 0;
+	priv->v = 0;
+	priv->w = 255;
+	priv->h = 255;
+	priv->red = 1;
+	priv->green = 1;
+	priv->blue = 1;
+	priv->linesize = 1;
+	priv->skip = 0;
+	priv->drawmode = 0;
+	priv->t = 0;
+	priv->d = 0;
+	priv->needs_init = TRUE;
+}
+
 static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
     struct engine* engine = (struct engine*)app->userData;
     switch (cmd) {
         case APP_CMD_INIT_WINDOW:
+            reset_superscope(engine->priv);
             if (engine->app->window != NULL) {
                 engine_draw_frame(engine);
             }
@@ -975,7 +1009,17 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
             engine_term_display(engine);
             break;
         case APP_CMD_LOST_FOCUS:
-            engine->animating = 0;
+            reset_superscope(engine->priv);
+            engine->animating = FALSE;
+            engine_draw_frame(engine);
+            break;
+	case APP_CMD_GAINED_FOCUS:
+            reset_superscope(engine->priv);
+            engine->animating = TRUE;
+            engine_draw_frame(engine);
+            break;
+	case APP_CMD_WINDOW_RESIZED:
+            reset_superscope(engine->priv);
             engine_draw_frame(engine);
             break;
     }
@@ -998,7 +1042,7 @@ void android_main(struct android_app* state) {
     engine.app = state;
 
     if (!init) {
-        init_tables();
+        init_tables(engine.priv);
         init = 1;
     }
 
