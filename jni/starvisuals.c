@@ -377,6 +377,7 @@ static void init_tables(SuperScopePrivate *priv)
 
 static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 {
+	int x, y;
 	int depth = 32;
 	switch(buffer->format)
 	{
@@ -392,34 +393,71 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 		
 	}
 
-	VisVideo *src, *dst, *scalevid, *image;
+	VisVideo *image, *src, *dst, *scalevid, *squarevid, *rotatevid;
+	VisRectangle imagerect, scalevidrect;
+
+//	visual_video_set_attributes(&image, buffer->width, buffer->height, buffer->stride,
+//		visual_video_depth_enum_from_value(depth));
+//	visual_video_set_buffer(&image, buffer->bits);
 
 	src = visual_bitmap_load_new_video ("/mnt/sdcard/starvisuals/bg.bmp");
 
 
 	dst = visual_video_new_with_buffer(src->width, src->height, visual_video_depth_enum_from_value(depth));
-	visual_video_depth_transform(dst, src);
 
-	scalevid = visual_video_new_with_buffer(src->width * .30, src->height * .30, visual_video_depth_enum_from_value(depth));
+	visual_video_depth_transform(dst, src);
 
 	image = visual_video_new_with_buffer(buffer->width, buffer->height, visual_video_depth_enum_from_value(depth));
 
+	double scale = .8;
+	scalevid = visual_video_new_with_buffer(src->width * scale, src->height * scale, visual_video_depth_enum_from_value(depth));
+	visual_video_scale(scalevid, dst, VISUAL_VIDEO_SCALE_NEAREST);
 
-	visual_video_scale (scalevid, dst, VISUAL_VIDEO_SCALE_BILINEAR);
+	int w = scalevid->width > image->width ? scalevid->width : image->width;
+	int h = scalevid->height > image->height ? scalevid->height : image->height;
+	visual_rectangle_set(&imagerect, 0, 0, w, h);
+	visual_rectangle_set(&scalevidrect, 0, 0, w, h);
+	//visual_video_fill_color(&image, visual_color_black());
+	visual_video_blit_overlay_rectangle(image, &imagerect, scalevid, &scalevidrect, FALSE);
 
-	visual_video_blit_overlay(image, scalevid, 0, 0, FALSE);
+	//int blockswide = 3;
+	//int blocksize = src->width / blockswide;
 
+	//block = visual_video_new_with_buffer(blocksize, blocksize, visual_video_depth_enum_from_value(depth));
+
+	//rotatevid = visual_video_new_with_buffer(blocksize, blocksize, visual_video_depth_enum_from_value(depth));
+
+
+
+	//(buffer->width, buffer->height, visual_video_depth_enum_from_value(depth));
+
+/*
+	for( x = 0; x < blockswide && x * blocksize < buffer->width; x++) 
+	{
+		for( y = 0; y < buffer->height; y+=blocksize) {
+			VisRectangle rect1, rect2;
+			visual_rectangle_set(&rect1, 0, 0, blocksize, blocksize);
+			visual_rectangle_set(&rect2, blocksize * x, y, blocksize, blocksize); 
+			visual_video_blit_overlay_rectangle(block, &rect1, dst, &rect2, FALSE);
+			visual_video_rotate(rotatevid, block, VISUAL_VIDEO_ROTATE_90);
+			visual_video_blit_overlay(image, rotatevid, y, x * blocksize, FALSE);
+		}
+	}
+*/
+
+	static int size = 0;
+	size = (size+=5) % 100;
+	
 	void *imgpix = visual_video_get_pixels(image);
 	void *pixels = buffer->bits;
-	int x, y;
 	VisColor *col = visual_color_new();
-	for(x = 0; x < buffer->width; x++)
+	for(x = 0; x < image->width; x++)
 	{
-		for(y = 0; y < buffer->height; y++)
+		for(y = 0; y < image->height; y++)
 		{
-			if(x < buffer->width && y < buffer->height)
+			if(x < image->width && y < image->height)
 			{
-				int n = (y * buffer->width + x);
+				int n = (y * image->width + x) * 2;
 				if(depth == 16) 
 				{
 					
@@ -437,11 +475,11 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 
 		}
 	}
+	visual_video_free_buffer(image);
 	visual_video_free_buffer(src);
 	visual_video_free_buffer(dst);
 	visual_video_free_buffer(scalevid);
-	visual_video_free_buffer(image);
-
+	return;
 }
 
 static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
@@ -946,9 +984,9 @@ static void engine_draw_frame(struct engine* engine) {
     int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
 
     /* Now fill the values with a nice little plasma */
-    fill_starvisuals(engine->priv, &buffer, time_ms);
+    //fill_starvisuals(engine->priv, &buffer, time_ms);
     //fill_plasma(&buffer, time_ms);
-    //fill_aurora(&buffer, time_ms);
+    fill_aurora(&buffer, time_ms);
 
     ANativeWindow_unlockAndPost(engine->app->window);
 
