@@ -16,11 +16,10 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
-LOCAL_C_INCLUDES := ../WORKING_DIRECTORY/external/tinyalsa/include /opt/arm-2011.09/arm-none-linux-gnueabi/libc/usr/include/sound
+LOCAL_C_INCLUDES := ./include
 LOCAL_SRC_FILES:= mixer.c pcm.c
 LOCAL_MODULE := libtinyalsa
 LOCAL_SHARED_LIBRARIES:= libcutils libutils
-LOCAL_MODULE_TAGS := optional
 LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_STATIC_LIBRARY)
@@ -33,7 +32,7 @@ LOCAL_CFLAGS	:= -O0 -g
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
-LOCAL_C_INCLUDES := external/tinyalsa/include /opt/arm-2011.09/arm-none-linux-gnueabi/libc/usr/include/sound
+LOCAL_C_INCLUDES := ./include
 LOCAL_MODULE := input_alsa
 LOCAL_SRC_FILES := input_alsa.c
 LOCAL_LDLIBS := -Wall
