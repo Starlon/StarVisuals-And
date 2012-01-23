@@ -16,10 +16,12 @@
 LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
-LOCAL_MODULE	:= evaluator
-LOCAL_SRC_FILES	:= evaluator.c
-LOCAL_LDLIBS	:= -Wall
-LOCAL_CFLAGS	:= -O0 -g
+LOCAL_C_INCLUDES := ../WORKING_DIRECTORY/external/tinyalsa/include /opt/arm-2011.09/arm-none-linux-gnueabi/libc/usr/include/sound
+LOCAL_SRC_FILES:= mixer.c pcm.c
+LOCAL_MODULE := libtinyalsa
+LOCAL_SHARED_LIBRARIES:= libcutils libutils
+LOCAL_MODULE_TAGS := optional
+LOCAL_PRELINK_MODULE := false
 
 include $(BUILD_STATIC_LIBRARY)
 
@@ -28,17 +30,31 @@ LOCAL_MODULE	:= libvisual
 LOCAL_SRC_FILES := lv_utils.c  lv_beat.c  lv_cache.c  lv_cpu.c  lv_gl.c  lv_libvisual.c  lv_mem.c  lv_palette.c  lv_rectangle.c  lv_time.c  lv_video.c  lv_bin.c  lv_collection.c  lv_error.c  lv_hashlist.c  lv_list.c  lv_morph.c   lv_param.c   lv_ringbuffer.c  lv_transform.c  lv_video_simd.c  lv_actor.c  lv_bmp.c   lv_color.c   lv_event.c   lv_hashmap.c  lv_log.c  lv_object.c  lv_plugin.c  lv_songinfo.c  lv_ui.c lv_audio.c  lv_buffer.c  lv_config.c  lv_fourier.c  lv_input.c  lv_math.c  lv_os.c  lv_random.c  lv_thread.c
 LOCAL_LDLIBS	:= -Wall
 LOCAL_CFLAGS	:= -O0 -g
-
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
+LOCAL_C_INCLUDES := external/tinyalsa/include /opt/arm-2011.09/arm-none-linux-gnueabi/libc/usr/include/sound
+LOCAL_MODULE := input_alsa
+LOCAL_SRC_FILES := input_alsa.c
+LOCAL_LDLIBS := -Wall
+LOCAL_CFLAGS := -O0 -g
+LOCAL_SHARED_LIBRARIES := libtinyalsa libvisual
+include $(BUILD_SHARED_LIBRARY)
 
+include $(CLEAR_VARS)
+LOCAL_MODULE	:= evaluator
+LOCAL_SRC_FILES	:= evaluator.c
+LOCAL_LDLIBS	:= -Wall
+LOCAL_CFLAGS	:= -O0 -g
+include $(BUILD_STATIC_LIBRARY)
+
+
+include $(CLEAR_VARS)
 LOCAL_MODULE    := starvisuals
 LOCAL_SRC_FILES := starvisuals.c
 LOCAL_LDLIBS    := -lm -llog -landroid -Wall
 LOCAL_CFLAGS	:= -O0 -g -Wall
 LOCAL_STATIC_LIBRARIES := android_native_app_glue evaluator libvisual
-
 include $(BUILD_SHARED_LIBRARY)
 
 $(call import-module,android/native_app_glue)

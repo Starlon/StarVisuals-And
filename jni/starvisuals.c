@@ -7,7 +7,7 @@
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law or agreed to in writing, software
+ * UnlessSURFACEquired by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
@@ -50,10 +50,14 @@ static __inline int makeint(double t)
   return (int)(t*255.0);
 }
 
-char point[] = "d=i+v*0.2; r=t+i*PI*4*count; x = cos(r)*d; y = sin(r) * d";
-char frame[] = "t=t-0.01;count=count+1";
-char beat[] = "";
-char init[] = "n=800";
+char init[] = "n=32;t=0;";
+char beat[] = "n=n+5";
+char frame[] = "t = t - 5;";
+char point[] = ""\
+"d=i+v*0.02;"\
+"r=t+i*PI*20;"\ 
+"x=cos(r)*d*0.8;"\
+"y=sin(r)*d*0.8";
 
 
 typedef struct {
@@ -61,9 +65,14 @@ typedef struct {
 
     int needs_init;
     int color_pos;
-    VisPalette pal;
     int channel_source;
     int blendmode;
+    int isBeat;
+
+    VisPalette pal;
+    VisInput *input;
+    float audiodata[2][2][1024];
+    unsigned char blendtable[256][256];
 
     void *init;
     void *beat;
@@ -377,7 +386,7 @@ static void init_tables(SuperScopePrivate *priv)
 
 static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 {
-	int x, y, h, w;
+	int h, w;
 	int depth = 32;
 	switch(buffer->format)
 	{
@@ -393,14 +402,15 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 		
 	}
 
-	VisVideo *image, *src, *dst, *scalevid, *rotatevid;
-	VisRectangle imagerect, scalevidrect;
+	VisVideo *image, *src, *dst, *scalevid, *final;
 
 	image = visual_video_new();
 	visual_video_set_attributes(image, buffer->width, buffer->height, buffer->stride * 2,
 		visual_video_depth_enum_from_value(depth));
 	visual_video_set_buffer(image, buffer->bits);
 
+        final = visual_video_new_with_buffer(buffer->width, buffer->height,
+		visual_video_depth_enum_from_value(depth));
 
 	src = visual_bitmap_load_new_video ("/mnt/sdcard/starvisuals/bg.bmp");
 
@@ -408,66 +418,34 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 	visual_video_depth_transform(dst, src);
 
 
-	rotatevid = visual_video_new_with_buffer(dst->height, dst->width, visual_video_depth_enum_from_value(depth));
-	visual_video_rotate(rotatevid, dst, VISUAL_VIDEO_ROTATE_90);
-	visual_video_fill_color(image, visual_color_black());
 	VisRectangle rect;
-	w = rotatevid->width < image->width ? rotatevid->width : image->width;
-	h = rotatevid->height < image->height ? rotatevid->height : image->height;
-	visual_rectangle_set(&rect, 0, 0, w, h);
-	visual_video_blit_overlay_rectangle(image, &rect, rotatevid, &rect, FALSE);
 
-	static double scale = 0;
-	scale = scale + .10;
-	scale = (((int)(scale * 100)) % 100) / 100.0;
-	w = image->width * scale;
-	h = image->height * scale;
+	int delta = (image->height - dst->height);
+	h = dst->height + delta;
+	delta = (image->width - dst->width);
+	w = dst->width + delta;
+
+	visual_rectangle_set(&rect, 0, 0, w, h);
+
 	scalevid = visual_video_new_with_buffer(w, h, 
 		visual_video_depth_enum_from_value(depth));
-	visual_video_scale(scalevid, image, VISUAL_VIDEO_SCALE_NEAREST);
-	visual_video_fill_color(image, visual_color_black());
-	visual_video_blit_overlay_rectangle(image, &rect, scalevid, &rect, FALSE);
+	visual_video_scale(scalevid, dst, VISUAL_VIDEO_SCALE_NEAREST);
 
-	
-/*
-	void *imgpix = visual_video_get_pixels(image);
-	void *pixels = buffer->bits;
-	if(0)for(x = 0; x < image->width && x < buffer->width; x++)
-	{
-		for(y = 0; y < image->height && y < buffer->height; y++)
-		{
-			if(x < image->width && y < image->height)
-			{
-				int n = (y * image->width + x) * 2;
-				if(depth == 16) 
-				{
-					
- 					int16_t rgb = *(int16_t*)(imgpix + n);
-					int16_t *pix = (int16_t*)(pixels + n);
-					*pix = rgb;
-				} 
-				else
-				{
-					int32_t rgb = *(int32_t*)(imgpix + n);
-					int32_t *pix = (int32_t*)(imgpix + n);
-					*pix = rgb;
-				}
-			}
+	visual_video_composite_set_surface(scalevid, .8 * 256);
+        visual_video_composite_set_type(scalevid, VISUAL_VIDEO_COMPOSITE_TYPE_SURFACE);
+	visual_video_blit_overlay_rectangle(image, &rect, scalevid, &rect, TRUE);
 
-		}
-	}
-*/
 	visual_video_free_buffer(image);
 	visual_video_free_buffer(src);
 	visual_video_free_buffer(scalevid);
-	visual_video_free_buffer(rotatevid);
+	visual_video_free_buffer(final);
 
 	return;
 }
 
 static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
 {
-    Fixed ft  = FIXED_FROM_FLOAT(t/1000.);
+    //Fixed ft  = FIXED_FROM_FLOAT(t/1000.);
     Fixed yt1 = FIXED_FROM_FLOAT(t/1230.);
     Fixed yt2 = yt1;
     Fixed xt10 = FIXED_FROM_FLOAT(t/3000.);
@@ -550,15 +528,13 @@ static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
     }
 }
 
-static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buffer, double  t)
+static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buffer)
 {
-    int16_t *buf = buffer->bits;
-    memset(buf, 0, buffer->stride * buffer->height * 2);
-    int isBeat;
-    int i;
+    float pcmbuf[BEAT_ADV_MAX];
+    int size = BEAT_ADV_MAX/2;
+    int isBeat = priv->isBeat;
 
-    float pcmbuf[512];
-    int size = 256;
+    int16_t *buf = buffer->bits;
 
     if(priv->needs_init) {
         priv->needs_init = FALSE;
@@ -568,29 +544,22 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
     int32_t current_color;
     int ws=(priv->channel_source&4)?1:0;
     int xorv=(ws*128)^128;
-    uint16_t fa_data[576];
+    //uint16_t fa_data[576];
 
-/*
     if((priv->channel_source&3) >= 2)
     {
         for(x = 0; x < size; x++) {
-            pcmbuf[x] = pipeline->audiodata[ws^1][0][x] / 2 + pipeline->audiodata[ws^1][1][x] / 2;
+            pcmbuf[x] = priv->audiodata[ws^1][0][x] / 2 + priv->audiodata[ws^1][1][x] / 2;
         }
     }
     else 
     {
         for(x = 0; x < size; x++) {
-            pcmbuf[x] = pipeline->audiodata[ws^1][priv->channel_source&3][x];
+            pcmbuf[x] = priv->audiodata[ws^1][priv->channel_source&3][x];
         }
     }
-  */
-
-    for(x = 0; x < size; x++) 
-    {
-	pcmbuf[x] = 1; //pipeline->audiodata[ws^1][priv->channel_source&3][x];
-    }  
   
-    priv->color_pos+=10;
+    priv->color_pos+=5;
 
     if(priv->color_pos >= priv->pal.ncolors * 64) 
 	priv->color_pos = 0;
@@ -601,8 +570,6 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
         int c1, c2;
         int r1, r2, r3;
         c1 = visual_color_to_uint32(&priv->pal.colors[p]);
-	//c1 = 0x00ff00;
-        //c2 = 0xffffff;
         if(p+1 < priv->pal.ncolors)
             c2 = visual_color_to_uint32(&priv->pal.colors[p+1]);
         else 
@@ -626,23 +593,27 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
     priv->drawmode = priv->drawmode ? 1.0 : 0.0;
     scope_run(priv, SCOPE_RUNNABLE_FRAME);
 
-    if (isBeat && FALSE)
+    if (isBeat)
         scope_run(priv, SCOPE_RUNNABLE_BEAT);
 
-    int candraw=0;
+    //int candraw=0;
     l = priv->n;
-    if (l >= 128*size)
-        l = 128*size - 1;
+    if (l >= size*size)
+        l = size*size - 1;
+    if( l == 0 || l == 1)
+	l = 2;
 
     for (a=0; a < l; a++) 
     {
         double r=(a*size)/(double)l;
         double s1=r-(int)r;
-        int val1 = (pcmbuf[(int)r] + 1) / 2.0 * 128;
-        int val2 = (pcmbuf[(int)r+1] + 1) / 2.0  * 128;
+/*
+        int val1 = (pcmbuf[(int)r] + 1) / 2.0 * size;
+        int val2 = (pcmbuf[(int)r+1] + 1) / 2.0  * size;
         double yr=(val1^xorv)*(1.0-s1)+(val2^xorv)*(s1);
-        priv->v = yr/128.0;
-        priv->i = (double)a/(double)(l-1);
+*/
+        priv->v = 128/(double)size;
+        priv->i = a/(double)(l-1);
         priv->skip = 0.0;
         scope_run(priv, SCOPE_RUNNABLE_POINT);
 
@@ -931,71 +902,6 @@ stats_endFrame( Stats*  s )
     s->lastTime = now;
 }
 
-static void priv_init(SuperScopePrivate *priv)
-{
-    priv->needs_init = TRUE;
-}
-
-// ----------------------------------------------------------------------
-
-struct engine {
-    struct android_app* app;
-
-    Stats stats;
-
-    int animating;
-    SuperScopePrivate *priv;
-};
-
-static void engine_draw_frame(struct engine* engine) {
-    if (engine->app->window == NULL) {
-        // No window.
-        return;
-    }
-
-    ANativeWindow_Buffer buffer;
-    if (ANativeWindow_lock(engine->app->window, &buffer, NULL) < 0) {
-        LOGW("Unable to lock window buffer");
-        return;
-    }
-
-    stats_startFrame(&engine->stats);
-
-    struct timespec t;
-    t.tv_sec = t.tv_nsec = 0;
-    clock_gettime(CLOCK_MONOTONIC, &t);
-    int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
-
-    /* Now fill the values with a nice little plasma */
-    //fill_starvisuals(engine->priv, &buffer, time_ms);
-    //fill_plasma(&buffer, time_ms);
-    fill_aurora(&buffer, time_ms);
-
-    ANativeWindow_unlockAndPost(engine->app->window);
-
-    stats_endFrame(&engine->stats);
-}
-
-static int engine_term_display(struct engine* engine) {
-    engine->animating = 0;
-    return 0;
-}
-
-static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) {
-    struct engine* engine = (struct engine*)app->userData;
-    if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
-        engine->animating = 1;
-        return 1;
-    } else if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY) {
-        LOGI("Key event: action=%d keyCode=%d metaState=0x%x",
-                AKeyEvent_getAction(event),
-                AKeyEvent_getKeyCode(event),
-                AKeyEvent_getMetaState(event));
-    }
-
-    return 0;
-}
-
 static void reset_superscope(SuperScopePrivate *priv)
 {
 	priv->n = 50;
@@ -1017,9 +923,156 @@ static void reset_superscope(SuperScopePrivate *priv)
 	priv->needs_init = TRUE;
 }
 
+static void priv_init(SuperScopePrivate *priv)
+{
+	reset_superscope(priv);
+}
+
+// ----------------------------------------------------------------------
+
+struct engine {
+    struct android_app* app;
+
+    Stats stats;
+
+    int animating;
+    int running;
+    SuperScopePrivate *priv;
+};
+
+static void engine_draw_frame(struct engine* engine) {
+    int i;
+    if (engine->app->window == NULL) {
+        // No window.
+        return;
+    }
+
+    ANativeWindow_Buffer buffer;
+    VisVideo *image;
+    int depth = 32;
+    switch(buffer.format)
+    {
+    	case WINDOW_FORMAT_RGBA_8888:
+    		depth = 32;
+    		break;
+    	case WINDOW_FORMAT_RGBX_8888:
+    		depth = 24;
+    		break;
+    	case WINDOW_FORMAT_RGB_565:
+    		depth = 16;
+    		break;
+    	
+    }
+
+    if (ANativeWindow_lock(engine->app->window, &buffer, NULL) < 0) {
+        LOGW("Unable to lock window buffer");
+        return;
+    }
+    image = visual_video_new();
+    visual_video_set_attributes(image, buffer.width, buffer.height, buffer.stride * 2, visual_video_depth_enum_from_value(depth));
+    visual_video_set_buffer(image, buffer.bits);
+    visual_video_fill_color(image, visual_color_black());
+
+    stats_startFrame(&engine->stats);
+
+    struct timespec t;
+    t.tv_sec = t.tv_nsec = 0;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
+
+    visual_input_run(engine->priv->input);
+    VisAudio *audio = engine->priv->input->audio;
+
+    VisBuffer pcmbuf1;
+    VisBuffer pcmbuf2;
+    VisBuffer spmbuf1;
+    VisBuffer spmbuf2;
+    VisBuffer tmp;
+
+    int size = BEAT_MAX_SIZE/2;
+
+    float data[2][2][size];
+
+    visual_buffer_init_allocate(&tmp, sizeof(float) * size, visual_buffer_destroyer_free);
+
+    /* Left audio */
+    visual_buffer_set_data_pair(&pcmbuf1, data[0][0], sizeof(float) * size);
+
+    if(visual_audio_get_sample(audio, &tmp, VISUAL_AUDIO_CHANNEL_LEFT) == VISUAL_OK)
+
+        visual_audio_sample_buffer_mix(&pcmbuf1, &tmp, TRUE, 1.0);
+
+    visual_buffer_set_data_pair(&spmbuf1, &data[1][0], sizeof(float) * size);
+
+    visual_audio_get_spectrum_for_sample (&spmbuf1, &tmp, TRUE);
+
+    /* Right audio */
+    visual_buffer_set_data_pair(&pcmbuf2, data[0][1], sizeof(float) * size);
+
+    if(visual_audio_get_sample(audio, &tmp, VISUAL_AUDIO_CHANNEL_LEFT) == VISUAL_OK)
+
+        visual_audio_sample_buffer_mix(&pcmbuf2, &tmp, TRUE, 1.0);
+
+    visual_buffer_set_data_pair(&spmbuf2, data[1][1], sizeof(float) * size);
+
+    visual_audio_get_spectrum_for_sample(&spmbuf2, &tmp, TRUE);
+
+    visual_object_unref(VISUAL_OBJECT(&tmp));
+    
+    for(i = size - 1; i >= 0; i--) {
+    engine->priv->audiodata[0][0][i] = (data[0][0][i] + 1) / 2;
+    engine->priv->audiodata[1][0][i] = (data[1][0][i] + 1) / 2;
+    engine->priv->audiodata[0][1][i] = (data[0][1][i] + 1) / 2;
+    engine->priv->audiodata[1][1][i] = (data[1][1][i] + 1) / 2;
+    }
+
+    float beatdata[BEAT_MAX_SIZE];
+    unsigned char visdata[BEAT_MAX_SIZE];
+
+    memcpy(beatdata, data[1][0], size * sizeof(float));
+    memcpy(beatdata + size, data[1][1], size * sizeof(float));
+
+    for(i = BEAT_MAX_SIZE - 1; i >= 0; i--) {
+        visdata[i] = (beatdata[i] + 1) / 2.0 * UCHAR_MAX;
+    }
+
+    engine->priv->isBeat = visual_audio_is_beat_with_data(audio, VISUAL_BEAT_ALGORITHM_PEAK, visdata, BEAT_MAX_SIZE);
+
+    /* Now fill the values with a nice little plasma */
+    //fill_starvisuals(engine->priv, &buffer);
+    fill_plasma(&buffer, time_ms);
+    fill_aurora(&buffer, time_ms);
+
+    ANativeWindow_unlockAndPost(engine->app->window);
+
+    stats_endFrame(&engine->stats);
+}
+
+static int engine_term_display(struct engine* engine) {
+    engine->animating = FALSE;
+    engine->running = FALSE;
+    return 0;
+}
+
+static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) {
+    struct engine* engine = (struct engine*)app->userData;
+    if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
+        engine->animating = 1;
+        return 1;
+    } else if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY) {
+        LOGI("Key event: action=%d keyCode=%d metaState=0x%x",
+                AKeyEvent_getAction(event),
+                AKeyEvent_getKeyCode(event),
+                AKeyEvent_getMetaState(event));
+    }
+
+    return 0;
+}
+
+
 static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
     struct engine* engine = (struct engine*)app->userData;
-    switch (cmd) {
+    if (engine->app->window) switch (cmd) {
         case APP_CMD_INIT_WINDOW:
             reset_superscope(engine->priv);
             if (engine->app->window != NULL) {
@@ -1028,11 +1081,9 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
             break;
         case APP_CMD_TERM_WINDOW:
             engine_term_display(engine);
-            break;
         case APP_CMD_LOST_FOCUS:
-            reset_superscope(engine->priv);
             engine->animating = FALSE;
-            engine_draw_frame(engine);
+            engine->running = FALSE;
             break;
 	case APP_CMD_GAINED_FOCUS:
             reset_superscope(engine->priv);
@@ -1051,6 +1102,11 @@ void android_main(struct android_app* state) {
 
     struct engine engine;
 
+    visual_init_path_add( "/mnt/sdcard/starvisuals");
+
+    visual_init(0, NULL);
+
+    
     // Make sure glue isn't stripped.
     app_dummy();
 
@@ -1061,6 +1117,11 @@ void android_main(struct android_app* state) {
     state->onAppCmd = engine_handle_cmd;
     state->onInputEvent = engine_handle_input;
     engine.app = state;
+
+    priv_init(engine.priv);
+
+    engine.priv->input = visual_input_new("alsa");
+    visual_input_realize(engine.priv->input);
 
     if (!init) {
         init_tables(engine.priv);
@@ -1073,7 +1134,8 @@ void android_main(struct android_app* state) {
 
     // loop waiting for stuff to do.
 
-    while (1) {
+    engine.running = TRUE;
+    while (engine.running) {
         // Read all pending events.
         int ident;
         int events;
@@ -1102,4 +1164,6 @@ void android_main(struct android_app* state) {
             engine_draw_frame(&engine);
         }
     }
+    visual_mem_free(engine.priv);
+    visual_quit();
 }
