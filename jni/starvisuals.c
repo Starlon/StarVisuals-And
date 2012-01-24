@@ -28,8 +28,8 @@
 #include <math.h>
 
 #include "evaluator.h"
-#include "libvisual.h"
-#include "lv_video.h"
+#include "libvisual/libvisual.h"
+#include "libvisual/lv_video.h"
 
 #define  LOG_TAG    "starvisuals"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
