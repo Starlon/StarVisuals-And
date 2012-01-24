@@ -17,19 +17,27 @@ LOCAL_PATH := $(call my-dir)
 
 include $(CLEAR_VARS)
 LOCAL_C_INCLUDES := ./include
-LOCAL_SRC_FILES:= mixer.c pcm.c
+LOCAL_SRC_FILES:= mixer.c tmp/pcm.c
 LOCAL_MODULE := libtinyalsa
 LOCAL_SHARED_LIBRARIES:= libcutils libutils
 LOCAL_PRELINK_MODULE := false
-
 include $(BUILD_STATIC_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_MODULE	:= libvisual
-LOCAL_SRC_FILES := lv_utils.c  lv_beat.c  lv_cache.c  lv_cpu.c  lv_gl.c  lv_libvisual.c  lv_mem.c  lv_palette.c  lv_rectangle.c  lv_time.c  lv_video.c  lv_bin.c  lv_collection.c  lv_error.c  lv_hashlist.c  lv_list.c  lv_morph.c   lv_param.c   lv_ringbuffer.c  lv_transform.c  lv_video_simd.c  lv_actor.c  lv_bmp.c   lv_color.c   lv_event.c   lv_hashmap.c  lv_log.c  lv_object.c  lv_plugin.c  lv_songinfo.c  lv_ui.c lv_audio.c  lv_buffer.c  lv_config.c  lv_fourier.c  lv_input.c  lv_math.c  lv_os.c  lv_random.c  lv_thread.c
+LOCAL_SRC_FILES := libvisual/lv_utils.c  libvisual/lv_beat.c  libvisual/lv_cache.c  libvisual/lv_cpu.c  libvisual/lv_gl.c  libvisual/lv_libvisual.c  libvisual/lv_mem.c  libvisual/lv_palette.c  libvisual/lv_rectangle.c  libvisual/lv_time.c  libvisual/lv_video.c  libvisual/lv_bin.c  libvisual/lv_collection.c  libvisual/lv_error.c  libvisual/lv_hashlist.c  libvisual/lv_list.c  libvisual/lv_morph.c   libvisual/lv_param.c   libvisual/lv_ringbuffer.c  libvisual/lv_transform.c  libvisual/lv_video_simd.c  libvisual/lv_actor.c  libvisual/lv_bmp.c   libvisual/lv_color.c   libvisual/lv_event.c   libvisual/lv_hashmap.c  libvisual/lv_log.c  libvisual/lv_object.c  libvisual/lv_plugin.c  libvisual/lv_songinfo.c  libvisual/lv_ui.c libvisual/lv_audio.c  libvisual/lv_buffer.c  libvisual/lv_config.c  libvisual/lv_fourier.c  libvisual/lv_input.c  libvisual/lv_math.c  libvisual/lv_os.c  libvisual/lv_random.c  libvisual/lv_thread.c
 LOCAL_LDLIBS	:= -Wall
 LOCAL_CFLAGS	:= -O0 -g
 include $(BUILD_STATIC_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_C_INCLUDES := ./include
+LOCAL_MODULE := actor_corona
+LOCAL_SRC_FILES := corona/actor_corona.cpp corona/corona.cpp corona/palette.cpp
+LOCAL_LDLIBS := -Wall
+LOCAL_CFLAGS := -O0 -g
+LOCAL_SHARED_LIBRARIES := libvisual
+include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
 LOCAL_C_INCLUDES := ./include
