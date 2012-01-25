@@ -1,9 +1,9 @@
 #!/bin/bash
 
-adb -e shell mkdir /data/libvisual
-adb -e shell mkdir /data/libvisual/plugins
-adb -e shell mkdir /data/libvisual/plugins/input
-adb -e shell mkdir /data/libvisual/plugins/actor
-adb -e shell mkdir /data/libvisual/plugins/morph
-adb -e shell mkdir /sdcard/starvisuals
-adb -e push media/bg.bmp /mnt/sdcard/starvisuals/bg.bmp
+adb -d shell mkdir /data/local/libvisual
+adb -d shell mkdir /data/local/libvisual/plugins
+adb -d shell mkdir /data/local/libvisual/plugins/input
+adb -d shell mkdir /data/local/libvisual/plugins/actor
+adb -d shell mkdir /data/local/libvisual/plugins/morph
+adb -d shell mkdir /sdcard/starvisuals
+adb -d push media/bg.bmp /mnt/sdcard/starvisuals/bg.bmp

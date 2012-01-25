@@ -52,7 +52,7 @@ include $(BUILD_SHARED_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_C_INCLUDES := ./include
 LOCAL_MODULE := input_alsa
-LOCAL_SRC_FILES := input_alsa.c
+LOCAL_SRC_FILES := alsa/input_alsa.c
 LOCAL_LDLIBS := -Wall
 LOCAL_CFLAGS := -O0 -g
 LOCAL_SHARED_LIBRARIES := libtinyalsa libvisual

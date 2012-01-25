@@ -84,6 +84,10 @@ const VisPluginInfo *get_plugin_info (int *count)
 int inp_alsa_init (VisPluginData *plugin)
 {
 	alsaPrivate *priv;
+	int device = 0;
+	int channels = 2;
+	int rate = 44100;
+	int bits = 16;
 /*
 	unsigned int rate = inp_alsa_var_samplerate;
 	unsigned int exact_rate;
@@ -105,10 +109,17 @@ int inp_alsa_init (VisPluginData *plugin)
 
 	priv->config.channels = 2;
 	priv->config.rate = 44100;
-	priv->config.period_size = 8;
-	priv->config.period_count = 8;
+	priv->config.period_size = 1024;
+	priv->config.period_count = 4;
 	priv->config.format = PCM_FORMAT_S16_LE;
-	priv->pcmstream = pcm_open(1, 1, PCM_IN, &priv->config);
+	priv->config.start_threshold = 0;
+	priv->config.stop_threshold = 0;
+	priv->config.silence_threshold = 0;
+	priv->pcmstream = pcm_open(0, 0, PCM_IN, &priv->config);
+	if(!priv->pcmstream)
+		visual_log(VISUAL_LOG_WARNING, "Couldn't open pcm stream.");
+	if(!pcm_is_ready(priv->pcmstream))
+		visual_log(VISUAL_LOG_WARNING, "Could not read from pcm stream.");
 
 	priv->loaded = 1;
 
@@ -133,11 +144,8 @@ int inp_alsa_cleanup (VisPluginData *plugin)
 
 int inp_alsa_upload (VisPluginData *plugin, VisAudio *audio)
 {
-visual_log(VISUAL_LOG_INFO, "--------------------------------LAWL");
-return 0;
 	int16_t data[PCM_BUF_SIZE];
 	alsaPrivate *priv = NULL;
-	int rcnt;
 	int i;
 
 	visual_log_return_val_if_fail(audio != NULL, -1);
@@ -145,32 +153,17 @@ return 0;
 	priv = visual_object_get_private (VISUAL_OBJECT (plugin));
 	visual_log_return_val_if_fail(priv != NULL, -1);
 
-#if 0
-	{	/* DEBUG STUFF, REMOVE IN RELEASE FIXME FIXME XXX TODO WHATEVER */
-		VisBuffer buffer;
-
-		visual_buffer_init (&buffer, data, 512, NULL);
-
-		for (i = 0; i < 16; i++) {
-			visual_audio_samplepool_input (audio->samplepool, &buffer, VISUAL_AUDIO_SAMPLE_RATE_44100,
-					VISUAL_AUDIO_SAMPLE_FORMAT_S16, VISUAL_AUDIO_SAMPLE_CHANNEL_STEREO);
-		}
-		return 0;
-	}
-#endif
-
 	if(pcm_is_ready(priv->pcmstream))
 	{
-		rcnt = pcm_read(priv->pcmstream, data, PCM_BUF_SIZE / 2);
-	
-		if (rcnt > 0)
+		if(!(pcm_read(priv->pcmstream, data, PCM_BUF_SIZE / 2)))
 		{
+	
 			VisBuffer buffer;
 	
-			visual_buffer_init (&buffer, data, rcnt, NULL);
+			visual_buffer_init (&buffer, data, PCM_BUF_SIZE/2, NULL);
 	
 			visual_audio_samplepool_input (audio->samplepool, &buffer, VISUAL_AUDIO_SAMPLE_RATE_44100,
-					VISUAL_AUDIO_SAMPLE_FORMAT_S16, VISUAL_AUDIO_SAMPLE_CHANNEL_STEREO);
+				VISUAL_AUDIO_SAMPLE_FORMAT_S16, VISUAL_AUDIO_SAMPLE_CHANNEL_STEREO);
 		}
 	}
 

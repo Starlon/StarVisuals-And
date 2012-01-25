@@ -8,12 +8,8 @@ all:
 	@ant clean
 	@ant release
 install:
-	@adb -e install -r bin/StarVisuals.apk
-	@adb -e push libs/armeabi/libinput_alsa.so /data/libvisual/plugins/input/
-	#@adb -e push libs/armeabi/libactor_AVS.so /data/libvisual/plugins/actor/
-	#@adb -e push libs/armeabi/libactor_avs_stars.so /data/libvisual/plugins/actor/
-	#@adb -e push libs/armeabi/libactor_avs_superscope.so /data/libvisual//plugins/actor/
-	@adb -e push libs/armeabi/libactor_corona.so /data/libvisual/plugins/actor/
+	@adb -d install -r bin/StarVisuals.apk
+	@make upload
 
 debug:
 	@ndk-build APP_OPTIM=debug
@@ -21,13 +17,16 @@ debug:
 	@ant debug
 
 debuginstall:
-	@adb -e install -r bin/starvisuals-debug.apk
-	@adb -e push libs/armeabi/libinput_alsa.so /data/libvisual/plugins/input/
-	@adb -e push libs/armeabi/libactor_AVS.so /data/libvisual//plugins/actor/
-	@adb -e push libs/armeabi/libactor_avs_stars.so /data/libvisual/plugins/actor/
-	@adb -e push libs/armeabi/libactor_avs_superscope.so /data/libvisual/plugins/actor/
-	@adb -e push libs/armeabi/libactor_corona.so /data/libvisual/plugins/actor/
-	@adb -e push libs/armeabi/libactor_lv_scope.so /data/libvisual/plugins/actor/
+	@adb -d install -r bin/starvisuals-debug.apk
+	@make upload
+
+upload:
+	@adb -d push libs/armeabi/libinput_alsa.so /data/local/libvisual/plugins/input/
+	@adb -d push libs/armeabi/libactor_AVS.so /data/local/libvisual//plugins/actor/
+	@adb -d push libs/armeabi/libactor_avs_stars.so /data/local/libvisual/plugins/actor/
+	@adb -d push libs/armeabi/libactor_avs_superscope.so /data/local/libvisual/plugins/actor/
+	@adb -d push libs/armeabi/libactor_corona.so /data/local/libvisual/plugins/actor/
+	@adb -d push libs/armeabi/libactor_lv_scope.so /data/local/libvisual/plugins/actor/
 
 clean:
 	@ndk-build clean

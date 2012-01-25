@@ -76,7 +76,6 @@ typedef struct {
     VisActor *actor;
     VisMorph *morph;
     VisInput *input;
-    VisVideo *video;
     //float audiodata[2][2][1024];
     //unsigned char blendtable[256][256];
 
@@ -788,15 +787,12 @@ static void engine_draw_frame(struct engine* engine) {
     	
     }
 
-/*
     if (ANativeWindow_lock(engine->app->window, &buffer, NULL) < 0) {
         visual_log(VISUAL_LOG_CRITICAL, "Unable to lock window buffer");
         return;
     }
     stats_startFrame(&engine->stats);
-*/
 
-/*
     VisVideo *video = visual_video_new();
     visual_video_set_attributes(video, buffer.width, buffer.height, buffer.stride * 2, visual_video_depth_enum_from_value(depth));
     visual_video_set_buffer(video, buffer.bits);
@@ -813,10 +809,9 @@ static void engine_draw_frame(struct engine* engine) {
     t.tv_sec = t.tv_nsec = 0;
     clock_gettime(CLOCK_MONOTONIC, &t);
     int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
-*/
+
     visual_input_run(priv->input);
-//visual_log(VISUAL_LOG_INFO, "wtf %p", priv->actor->video);
-    //visual_actor_run(priv->actor, priv->input->audio);
+    visual_actor_run(priv->actor, priv->input->audio);
 
     //fill_starvisuals(engine->priv, &buffer);
     //fill_plasma(&buffer, time_ms);
@@ -827,13 +822,13 @@ static void engine_draw_frame(struct engine* engine) {
     //visual_video_composite_set_surface(priv->video, .8 * 256);
     //visual_video_composite_set_type(priv->video, VISUAL_VIDEO_COMPOSITE_TYPE_SURFACE);
     //visual_video_fill_color(act_video, visual_color_white());
-    //visual_video_depth_transform(video, act_video);
+    visual_video_depth_transform(video, act_video);
     //visual_video_blit_overlay_rectangle(video, &rect, priv->video, &rect, TRUE);
 
-    //visual_video_free_buffer(act_video);
-    //ANativeWindow_unlockAndPost(engine->app->window);
+    visual_video_free_buffer(act_video);
+    ANativeWindow_unlockAndPost(engine->app->window);
 
-    //stats_endFrame(&engine->stats);
+    stats_endFrame(&engine->stats);
 }
 
 static int engine_term_display(struct engine* engine) {
@@ -889,10 +884,10 @@ void android_main(struct android_app* state) {
     VisParamContainer *params;
     VisParamEntry *param;
 
-	    visual_init_path_add( "/data/libvisual/plugins/input");
-	    visual_init_path_add( "/data/libvisual/plugins/actor");
-	    visual_init_path_add( "/data/libvisual/plugins/morph");
-	    visual_init_path_add( "/data/libvisual/plugins/transform");
+	    visual_init_path_add( "/data/local/libvisual/plugins/input");
+	    visual_init_path_add( "/data/local/libvisual/plugins/actor");
+	    visual_init_path_add( "/data/local/libvisual/plugins/morph");
+	    visual_init_path_add( "/data/local/libvisual/plugins/transform");
 	    visual_log_set_verboseness(VISUAL_LOG_VERBOSENESS_HIGH);
 	    visual_init(0, NULL);
 
@@ -909,14 +904,9 @@ void android_main(struct android_app* state) {
 
     engine.priv->input = visual_input_new("alsa");
     visual_input_realize(engine.priv->input);
-while(1)
-    visual_input_run(engine.priv->input);
 
-    //visual_object_ref(VISUAL_OBJECT(engine.priv->input));
-
-    //engine.priv->actor = visual_actor_new("lv_scope");
-    //visual_actor_realize(engine.priv->actor);
-    //visual_object_ref(VISUAL_OBJECT(engine.priv->actor));
+    engine.priv->actor = visual_actor_new("lv_scope");
+    visual_actor_realize(engine.priv->actor);
 
     //engine.priv->morph = visual_morph_new("morph");
     //visual_morph_realize(engine.priv->actor);
