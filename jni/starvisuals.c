@@ -31,10 +31,12 @@
 #include "libvisual/libvisual.h"
 #include "libvisual/lv_video.h"
 
+/*
 #define  LOG_TAG    "starvisuals"
 #define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 #define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+*/
 
 /* Set to 1 to enable debug log traces. */
 #define DEBUG 0
@@ -55,12 +57,13 @@ char beat[] = "n=n+5";
 char frame[] = "t = t - 5;";
 char point[] = ""\
 "d=i+v*0.02;"\
-"r=t+i*PI*20;"\ 
+"r=t+i*PI*20;"\
 "x=cos(r)*d*0.8;"\
 "y=sin(r)*d*0.8";
 
 
 typedef struct {
+/*
     double n, b, x, y, i, v, w, h, red, green, blue, linesize, skip, drawmode, t, d; 
 
     int needs_init;
@@ -68,20 +71,24 @@ typedef struct {
     int channel_source;
     int blendmode;
     int isBeat;
-
+*/
     VisPalette pal;
+    VisActor *actor;
+    VisMorph *morph;
     VisInput *input;
-    float audiodata[2][2][1024];
-    unsigned char blendtable[256][256];
+    VisVideo *video;
+    //float audiodata[2][2][1024];
+    //unsigned char blendtable[256][256];
 
-    void *init;
-    void *beat;
-    void *frame;
-    void *point;
+    //void *init;
+    //void *beat;
+    //void *frame;
+    //void *point;
 
-} SuperScopePrivate;
+} StarVisualsPrivate;
 
 
+/*
 typedef enum scope_runnable ScopeRunnable;
 
 enum scope_runnable {
@@ -91,7 +98,7 @@ enum scope_runnable {
     SCOPE_RUNNABLE_POINT,
 };
 
-int scope_load_runnable(SuperScopePrivate *priv, ScopeRunnable runnable, char *buf)
+int scope_load_runnable(StarVisualsPrivate *priv, ScopeRunnable runnable, char *buf)
 {
     switch((int)runnable) {
         case SCOPE_RUNNABLE_INIT:
@@ -110,7 +117,7 @@ int scope_load_runnable(SuperScopePrivate *priv, ScopeRunnable runnable, char *b
     return 0;
 }
 
-int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
+int scope_run(StarVisualsPrivate *priv, ScopeRunnable runnable)
 {
 	RESULT result = {0, 0, 0, NULL};
 
@@ -162,7 +169,9 @@ int scope_run(SuperScopePrivate *priv, ScopeRunnable runnable)
     priv->d = R2N(FindVariable("d")->value);
     return 0;
 }
+*/
 
+/*
 int avs_gfx_line_ints (void *pixels, int x0, int y0, int x1, int y1, int pitch, int col)
 {
 	register int dy = y1 - y0;
@@ -219,6 +228,7 @@ int avs_gfx_line_ints (void *pixels, int x0, int y0, int x1, int y1, int pitch, 
 
 	return 0;
 }
+*/
 
 /* Return current time in milliseconds */
 static double now_ms(void)
@@ -331,7 +341,7 @@ static uint16_t  make565(int red, int green, int blue)
                        ((blue  >> 3) & 0x001f) );
 }
 
-static void init_palette(SuperScopePrivate *priv)
+static void init_palette(StarVisualsPrivate *priv)
 {
     int  nn, mm = 0;
     /* fun with colors */
@@ -378,13 +388,13 @@ static __inline__ uint16_t  palette_from_fixed( Fixed  x )
 
 /* Angles expressed as fixed point radians */
 
-static void init_tables(SuperScopePrivate *priv)
+static void init_tables(StarVisualsPrivate *priv)
 {
     init_palette(priv);
     init_angles();
 }
 
-static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
+static void fill_aurora(ANativeWindow_Buffer *buffer, VisVideo *image)
 {
 	int h, w;
 	int depth = 32;
@@ -402,12 +412,7 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 		
 	}
 
-	VisVideo *image, *src, *dst, *scalevid, *final;
-
-	image = visual_video_new();
-	visual_video_set_attributes(image, buffer->width, buffer->height, buffer->stride * 2,
-		visual_video_depth_enum_from_value(depth));
-	visual_video_set_buffer(image, buffer->bits);
+	VisVideo *src, *dst, *scalevid;
 
 	src = visual_bitmap_load_new_video ("/mnt/sdcard/starvisuals/bg.bmp");
 
@@ -433,14 +438,14 @@ static void fill_aurora(ANativeWindow_Buffer *buffer, double t)
 	visual_video_blit_overlay_rectangle(image, &rect, scalevid, &rect, TRUE);
 
 
-	visual_video_free_buffer(image);
 	visual_video_free_buffer(src);
+	visual_video_free_buffer(dst);
 	visual_video_free_buffer(scalevid);
 
 	return;
 }
 
-static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
+static void fill_plasma(ANativeWindow_Buffer* buffer, int t)
 {
     //Fixed ft  = FIXED_FROM_FLOAT(t/1000.);
     Fixed yt1 = FIXED_FROM_FLOAT(t/1230.);
@@ -525,7 +530,8 @@ static void fill_plasma(ANativeWindow_Buffer* buffer, double  t)
     }
 }
 
-static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buffer)
+#if 0
+static void fill_starvisuals(StarVisualsPrivate *priv, ANativeWindow_Buffer* buffer)
 {
     float pcmbuf[BEAT_ADV_MAX];
     int size = BEAT_ADV_MAX/2;
@@ -604,12 +610,10 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
     {
         double r=(a*size)/(double)l;
         double s1=r-(int)r;
-/*
         int val1 = (pcmbuf[(int)r] + 1) / 2.0 * size;
         int val2 = (pcmbuf[(int)r+1] + 1) / 2.0  * size;
         double yr=(val1^xorv)*(1.0-s1)+(val2^xorv)*(s1);
-*/
-        priv->v = 128/(double)size;
+        priv->v = yr/(double)size;
         priv->i = a/(double)(l-1);
         priv->skip = 0.0;
         scope_run(priv, SCOPE_RUNNABLE_POINT);
@@ -640,168 +644,11 @@ static void fill_starvisuals(SuperScopePrivate *priv, ANativeWindow_Buffer* buff
     }
 
 
-    LOGI("width=%d height=%d stride=%d format=%d", buffer->width, buffer->height,
-            buffer->stride, buffer->format);
+    //visual_log(VISUAL_LOG_INFO,"width=%d height=%d stride=%d format=%d", buffer->width, buffer->height,
+    //        buffer->stride, buffer->format);
 }
+#endif
 
-double PI = 3.14159;
-double E = 2.71828;
-double PHI = 1.618033;
-
-static void function_log(RESULT * result, RESULT * arg1);
-static void function_sin(RESULT * result, RESULT * arg1);
-static void function_cos(RESULT * result, RESULT * arg1);
-static void function_tan(RESULT * result, RESULT * arg1);
-static void function_asin(RESULT * result, RESULT * arg1);
-static void function_acos(RESULT * result, RESULT * arg1);
-static void function_atan(RESULT * result, RESULT * arg1);
-static void function_if(RESULT * result, RESULT * arg1, RESULT * arg2, RESULT * arg3);
-static void function_div(RESULT * result, RESULT * arg1, RESULT * arg2);
-static void function_rand(RESULT * result, RESULT * arg1, RESULT * arg2);
-
-void init_evaluator(SuperScopePrivate *priv)
-{
-
-        AddFunction("log", 1, function_log);
-        AddFunction("sin", 1, function_sin);
-        AddFunction("cos", 1, function_cos);
-        AddFunction("tan", 1, function_tan);
-        AddFunction("asin", 1, function_asin);
-        AddFunction("acos", 1, function_acos);
-        AddFunction("atan", 1, function_atan);
-        AddFunction("if", 2, function_if);
-        AddFunction("div", 2, function_div);
-        AddFunction("rand", 1, function_rand);
-
-        SetVariableNumeric ("PI", PI);
-
-        SetVariableNumeric ("E", E);
-
-        SetVariableNumeric ("PHI", PHI);
-
-	scope_load_runnable(priv, SCOPE_RUNNABLE_INIT, init);
-	scope_load_runnable(priv, SCOPE_RUNNABLE_BEAT, beat);
-	scope_load_runnable(priv, SCOPE_RUNNABLE_FRAME, frame);
-	scope_load_runnable(priv, SCOPE_RUNNABLE_POINT, point);
-
-	priv->n = 50;
-	priv->b = 0;
-	priv->x = 0;
-	priv->y = 0;
-	priv->i = 0;
-	priv->v = 0;
-	priv->w = 255;
-	priv->h = 255;
-	priv->red = 1;
-	priv->green = 1;
-	priv->blue = 1;
-	priv->linesize = 1;
-	priv->skip = 0;
-	priv->drawmode = 0;
-	priv->t = 0;
-	priv->d = 0;
-	priv->needs_init = TRUE;
-
-        SetVariableNumeric("n", priv->n);
-        SetVariableNumeric("b", priv->b);
-        SetVariableNumeric("x", priv->x);
-        SetVariableNumeric("y", priv->y);
-        SetVariableNumeric("i", priv->i);
-        SetVariableNumeric("v", priv->v);
-        SetVariableNumeric("w", priv->w);
-        SetVariableNumeric("h", priv->h);
-        SetVariableNumeric("red", priv->red);
-        SetVariableNumeric("green", priv->green);
-        SetVariableNumeric("blue", priv->blue);
-        SetVariableNumeric("linesize", priv->linesize);
-        SetVariableNumeric("skip", priv->skip);
-        SetVariableNumeric("drawmode", priv->drawmode);
-        SetVariableNumeric("t", priv->t);
-        SetVariableNumeric("d", priv->d);
-
-}
-
-static void function_log(RESULT * result, RESULT * arg1)
-{
-        double val = log(R2N(arg1));
-
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_sin(RESULT * result, RESULT * arg1)
-{
-        double val = sin(R2N(arg1));
-
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_cos(RESULT * result, RESULT * arg1)
-{
-        double val = cos(R2N(arg1));
-
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_tan(RESULT * result, RESULT * arg1)
-{
-        double val = tan(R2N(arg1));
-
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_asin(RESULT * result, RESULT * arg1)
-{
-        double val = asin(R2N(arg1));
-
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_acos(RESULT * result, RESULT * arg1)
-{
-        double val = acos(R2N(arg1));
-
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_atan(RESULT * result, RESULT * arg1)
-{
-        double val = atan(R2N(arg1));
-
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_if(RESULT * result, RESULT * arg1, RESULT * arg2, RESULT * arg3)
-{
-        double a = R2N(arg1);
-        double b = R2N(arg2);
-        double c = R2N(arg3);
-        double val = (c != 0.0) ? a : b;
-
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_div(RESULT * result, RESULT * arg1, RESULT * arg2)
-{
-        double a = R2N(arg1);
-        double b = R2N(arg2);
-        double val = (a == 0) ? 0 : (b / a);
-        SetResult(&result, R_NUMBER, &val);
-}
-
-static void function_rand(RESULT * result, RESULT * arg1, RESULT * arg2)
-{
-        int a, b, seed, val;
-        a = R2N(arg1);
-        b = R2N(arg1);
-
-        seed = time(NULL);
-
-        srand(seed);
-
-        val = (rand() % (b - a)) + a;
-
-        SetResult(&result, R_NUMBER, &val);
-}
 
 
 /* simple stats management */
@@ -871,7 +718,7 @@ stats_endFrame( Stats*  s )
             avgRender /= s->numFrames;
             avgFrame  /= s->numFrames;
 
-            LOGI("frame/s (avg,min,max) = (%.1f,%.1f,%.1f) "
+            visual_log(VISUAL_LOG_INFO, "frame/s (avg,min,max) = (%.1f,%.1f,%.1f) "
                  "render time ms (avg,min,max) = (%.1f,%.1f,%.1f)\n",
                  1000./avgFrame, 1000./maxFrame, 1000./minFrame,
                  avgRender, minRender, maxRender);
@@ -899,31 +746,6 @@ stats_endFrame( Stats*  s )
     s->lastTime = now;
 }
 
-static void reset_superscope(SuperScopePrivate *priv)
-{
-	priv->n = 50;
-	priv->b = 0;
-	priv->x = 0;
-	priv->y = 0;
-	priv->i = 0;
-	priv->v = 0;
-	priv->w = 255;
-	priv->h = 255;
-	priv->red = 1;
-	priv->green = 1;
-	priv->blue = 1;
-	priv->linesize = 1;
-	priv->skip = 0;
-	priv->drawmode = 0;
-	priv->t = 0;
-	priv->d = 0;
-	priv->needs_init = TRUE;
-}
-
-static void priv_init(SuperScopePrivate *priv)
-{
-	reset_superscope(priv);
-}
 
 // ----------------------------------------------------------------------
 
@@ -932,9 +754,11 @@ struct engine {
 
     Stats stats;
 
-    int animating;
     int running;
-    SuperScopePrivate *priv;
+    int visible;
+    int animating;
+
+    StarVisualsPrivate *priv;
 };
 
 static void engine_draw_frame(struct engine* engine) {
@@ -944,9 +768,12 @@ static void engine_draw_frame(struct engine* engine) {
         return;
     }
 
+    StarVisualsPrivate *priv = engine->priv;
     ANativeWindow_Buffer buffer;
-    VisVideo *image;
+    VisVideoAttributeOptions *videoptions;
+    
     int depth = 32;
+
     switch(buffer.format)
     {
     	case WINDOW_FORMAT_RGBA_8888:
@@ -961,92 +788,55 @@ static void engine_draw_frame(struct engine* engine) {
     	
     }
 
+/*
     if (ANativeWindow_lock(engine->app->window, &buffer, NULL) < 0) {
-        LOGW("Unable to lock window buffer");
+        visual_log(VISUAL_LOG_CRITICAL, "Unable to lock window buffer");
         return;
     }
-    image = visual_video_new();
-    visual_video_set_attributes(image, buffer.width, buffer.height, buffer.stride * 2, visual_video_depth_enum_from_value(depth));
-    visual_video_set_buffer(image, buffer.bits);
-    visual_video_fill_color(image, visual_color_black());
-
     stats_startFrame(&engine->stats);
+*/
+
+/*
+    VisVideo *video = visual_video_new();
+    visual_video_set_attributes(video, buffer.width, buffer.height, buffer.stride * 2, visual_video_depth_enum_from_value(depth));
+    visual_video_set_buffer(video, buffer.bits);
+
+    // allocate buffer for actor video -- 8 bit depth for corona.
+    VisVideo *act_video = visual_video_new();
+//visual_log(VISUAL_LOG_INFO, "act video %p", act_video);
+    visual_video_set_attributes(act_video, buffer.width, buffer.height, buffer.width, visual_actor_get_supported_depth(priv->actor));
+    visual_video_allocate_buffer(act_video);
+    visual_actor_set_video(priv->actor, act_video);
+    //visual_actor_video_negotiate(priv->actor, 0, FALSE, FALSE);
 
     struct timespec t;
     t.tv_sec = t.tv_nsec = 0;
     clock_gettime(CLOCK_MONOTONIC, &t);
     int64_t time_ms = (((int64_t)t.tv_sec)*1000000000LL + t.tv_nsec)/1000000;
+*/
+    visual_input_run(priv->input);
+//visual_log(VISUAL_LOG_INFO, "wtf %p", priv->actor->video);
+    //visual_actor_run(priv->actor, priv->input->audio);
 
-    visual_input_run(engine->priv->input);
-    VisAudio *audio = engine->priv->input->audio;
-
-    VisBuffer pcmbuf1;
-    VisBuffer pcmbuf2;
-    VisBuffer spmbuf1;
-    VisBuffer spmbuf2;
-    VisBuffer tmp;
-
-    int size = BEAT_MAX_SIZE/2;
-
-    float data[2][2][size];
-
-    visual_buffer_init_allocate(&tmp, sizeof(float) * size, visual_buffer_destroyer_free);
-
-    /* Left audio */
-    visual_buffer_set_data_pair(&pcmbuf1, data[0][0], sizeof(float) * size);
-
-    if(visual_audio_get_sample(audio, &tmp, VISUAL_AUDIO_CHANNEL_LEFT) == VISUAL_OK)
-
-        visual_audio_sample_buffer_mix(&pcmbuf1, &tmp, TRUE, 1.0);
-
-    visual_buffer_set_data_pair(&spmbuf1, &data[1][0], sizeof(float) * size);
-
-    visual_audio_get_spectrum_for_sample (&spmbuf1, &tmp, TRUE);
-
-    /* Right audio */
-    visual_buffer_set_data_pair(&pcmbuf2, data[0][1], sizeof(float) * size);
-
-    if(visual_audio_get_sample(audio, &tmp, VISUAL_AUDIO_CHANNEL_LEFT) == VISUAL_OK)
-
-        visual_audio_sample_buffer_mix(&pcmbuf2, &tmp, TRUE, 1.0);
-
-    visual_buffer_set_data_pair(&spmbuf2, data[1][1], sizeof(float) * size);
-
-    visual_audio_get_spectrum_for_sample(&spmbuf2, &tmp, TRUE);
-
-    visual_object_unref(VISUAL_OBJECT(&tmp));
-    
-    for(i = size - 1; i >= 0; i--) {
-    engine->priv->audiodata[0][0][i] = (data[0][0][i] + 1) / 2;
-    engine->priv->audiodata[1][0][i] = (data[1][0][i] + 1) / 2;
-    engine->priv->audiodata[0][1][i] = (data[0][1][i] + 1) / 2;
-    engine->priv->audiodata[1][1][i] = (data[1][1][i] + 1) / 2;
-    }
-
-    float beatdata[BEAT_MAX_SIZE];
-    unsigned char visdata[BEAT_MAX_SIZE];
-
-    memcpy(beatdata, data[1][0], size * sizeof(float));
-    memcpy(beatdata + size, data[1][1], size * sizeof(float));
-
-    for(i = BEAT_MAX_SIZE - 1; i >= 0; i--) {
-        visdata[i] = (beatdata[i] + 1) / 2.0 * UCHAR_MAX;
-    }
-
-    engine->priv->isBeat = visual_audio_is_beat_with_data(audio, VISUAL_BEAT_ALGORITHM_PEAK, visdata, BEAT_MAX_SIZE);
-
-    /* Now fill the values with a nice little plasma */
     //fill_starvisuals(engine->priv, &buffer);
-    fill_plasma(&buffer, time_ms);
-    fill_aurora(&buffer, time_ms);
+    //fill_plasma(&buffer, time_ms);
+    //fill_aurora(&buffer, video);
 
-    ANativeWindow_unlockAndPost(engine->app->window);
+    //VisRectangle rect;
+    //visual_rectangle_set(&rect, 0, 0, buffer.width, buffer.height);
+    //visual_video_composite_set_surface(priv->video, .8 * 256);
+    //visual_video_composite_set_type(priv->video, VISUAL_VIDEO_COMPOSITE_TYPE_SURFACE);
+    //visual_video_fill_color(act_video, visual_color_white());
+    //visual_video_depth_transform(video, act_video);
+    //visual_video_blit_overlay_rectangle(video, &rect, priv->video, &rect, TRUE);
 
-    stats_endFrame(&engine->stats);
+    //visual_video_free_buffer(act_video);
+    //ANativeWindow_unlockAndPost(engine->app->window);
+
+    //stats_endFrame(&engine->stats);
 }
 
 static int engine_term_display(struct engine* engine) {
-    engine->animating = FALSE;
     engine->running = FALSE;
     return 0;
 }
@@ -1057,7 +847,7 @@ static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) 
         engine->animating = 1;
         return 1;
     } else if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY) {
-        LOGI("Key event: action=%d keyCode=%d metaState=0x%x",
+        visual_log(VISUAL_LOG_DEBUG, "Key event: action=%d keyCode=%d metaState=0x%x",
                 AKeyEvent_getAction(event),
                 AKeyEvent_getKeyCode(event),
                 AKeyEvent_getMetaState(event));
@@ -1071,25 +861,21 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
     struct engine* engine = (struct engine*)app->userData;
     if (engine->app->window) switch (cmd) {
         case APP_CMD_INIT_WINDOW:
-            reset_superscope(engine->priv);
             if (engine->app->window != NULL) {
                 engine_draw_frame(engine);
             }
             break;
         case APP_CMD_TERM_WINDOW:
             engine_term_display(engine);
+            engine->running = FALSE;
         case APP_CMD_LOST_FOCUS:
-            engine->animating = FALSE;
             engine->running = FALSE;
             break;
 	case APP_CMD_GAINED_FOCUS:
-            reset_superscope(engine->priv);
-            engine->animating = TRUE;
-            engine_draw_frame(engine);
+            //engine_draw_frame(engine);
             break;
 	case APP_CMD_WINDOW_RESIZED:
-            reset_superscope(engine->priv);
-            engine_draw_frame(engine);
+            //engine_draw_frame(engine);
             break;
     }
 }
@@ -1098,27 +884,42 @@ void android_main(struct android_app* state) {
     static int init;
 
     struct engine engine;
+    VisVideo *image;
+    VisEventQueue *localqueue;
+    VisParamContainer *params;
+    VisParamEntry *param;
 
-    visual_init_path_add( "/mnt/sdcard/starvisuals");
+	    visual_init_path_add( "/data/libvisual/plugins/input");
+	    visual_init_path_add( "/data/libvisual/plugins/actor");
+	    visual_init_path_add( "/data/libvisual/plugins/morph");
+	    visual_init_path_add( "/data/libvisual/plugins/transform");
+	    visual_log_set_verboseness(VISUAL_LOG_VERBOSENESS_HIGH);
+	    visual_init(0, NULL);
 
-    visual_init(0, NULL);
-
-    
     // Make sure glue isn't stripped.
     app_dummy();
 
     memset(&engine, 0, sizeof(engine));
-    engine.priv = malloc(sizeof(SuperScopePrivate));
-    memset(engine.priv, 0, sizeof(SuperScopePrivate));
+    engine.priv = malloc(sizeof(StarVisualsPrivate));
+    memset(engine.priv, 0, sizeof(StarVisualsPrivate));
     state->userData = &engine;
     state->onAppCmd = engine_handle_cmd;
     state->onInputEvent = engine_handle_input;
     engine.app = state;
 
-    priv_init(engine.priv);
-
     engine.priv->input = visual_input_new("alsa");
     visual_input_realize(engine.priv->input);
+while(1)
+    visual_input_run(engine.priv->input);
+
+    //visual_object_ref(VISUAL_OBJECT(engine.priv->input));
+
+    //engine.priv->actor = visual_actor_new("lv_scope");
+    //visual_actor_realize(engine.priv->actor);
+    //visual_object_ref(VISUAL_OBJECT(engine.priv->actor));
+
+    //engine.priv->morph = visual_morph_new("morph");
+    //visual_morph_realize(engine.priv->actor);
 
     if (!init) {
         init_tables(engine.priv);
@@ -1127,11 +928,18 @@ void android_main(struct android_app* state) {
 
     stats_init(&engine.stats);
 
-    init_evaluator(engine.priv);
+    init_evaluator();
 
     // loop waiting for stuff to do.
 
+    //localqueue = visual_event_queue_new();
+    //visual_object_ref(VISUAL_OBJECT(localqueue));
+
     engine.running = TRUE;
+
+    //params = visual_plugin_get_params(engine.private->input);
+    //param = visual_param_container_get(params, "songinfo");
+
     while (engine.running) {
         // Read all pending events.
         int ident;
@@ -1151,16 +959,68 @@ void android_main(struct android_app* state) {
 
             // Check if we are exiting.
             if (state->destroyRequested != 0) {
-                LOGI("Engine thread destroy requested!");
+                visual_log(VISUAL_LOG_INFO, "Engine thread destroy requested!");
                 engine_term_display(&engine);
                 return;
             }
         }
+        engine_draw_frame(&engine);
+/*
+	VisEventQueue *pluginqueue;
+	VisEvent *ev;
+	//FIXME display_drain_events(display, localqueue);
+	pluginqueue = visual_plugin_get_eventqueue (visual_actor_get_plugin(engine.priv->actor));
+*/
+/*
+	while(visual_event_queue_poll_by_reference (localqueue, &ev))
+	{
+	
+		if(ev->type != VISUAL_EVENT_RESIZE)
+			visual_event_queue_add (pluginqueue, ev);
 
-        if (engine.animating) {
-            engine_draw_frame(&engine);
-        }
+		switch (ev->type)
+		{
+			case VISUAL_EVENT_PARAM:
+				break;
+			case VISUAL_EVENT_MOUSEMOTION:
+				break;
+			case VISUAL_EVENT_MOUSEBUTTONDOWN:
+				break;
+			case VISUAL_EVENT_MOUSEBUTTONUP:
+				break;
+			case VISUAL_EVENT_KEYDOWN:
+				switch(ev->event.keyboard.keysym.sym)
+				{
+					case VKEY_ESCAPE:
+						engine.running = FALSE;
+						engine.animating = FALSE;
+						break;
+					case VKEY_TAB:
+						break;
+					default:
+						break;
+				}
+				break;
+			case VISUAL_EVENT_KEYUP:
+				break;
+			case VISUAL_EVENT_QUIT:
+				engine.running = FALSE;
+				break;
+			case VISUAL_EVENT_VISIBILITY:
+				engine.visible = ev->event.visibility.is_visible;
+				break;
+			default:
+				break;
+		}
+	}
+*/
     }
+
+/*
+    visual_object_unref(VISUAL_OBJECT(engine.priv->input));
+    visual_object_unref(VISUAL_OBJECT(engine.priv->actor));
+    visual_object_unref(VISUAL_OBJECT(localqueue));
+*/
     visual_mem_free(engine.priv);
     visual_quit();
 }

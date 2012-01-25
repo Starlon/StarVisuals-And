@@ -67,4 +67,6 @@ int Compile(const char *expression, void **tree);
 int Eval(void *tree, RESULT * result);
 void DelTree(void *tree);
 
+void init_evaluator(void);
+
 #endif

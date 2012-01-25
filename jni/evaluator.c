@@ -1237,3 +1237,124 @@ void DelTree(void *tree)
 	FreeResult(Tree->Result);
     free(Tree);
 }
+
+
+double PI = M_PI;
+double E = M_E;
+double PHI = 1.618033;
+
+static void function_log(RESULT * result, RESULT * arg1);
+static void function_sin(RESULT * result, RESULT * arg1);
+static void function_cos(RESULT * result, RESULT * arg1);
+static void function_tan(RESULT * result, RESULT * arg1);
+static void function_asin(RESULT * result, RESULT * arg1);
+static void function_acos(RESULT * result, RESULT * arg1);
+static void function_atan(RESULT * result, RESULT * arg1);
+static void function_if(RESULT * result, RESULT * arg1, RESULT * arg2, RESULT * arg3);
+static void function_div(RESULT * result, RESULT * arg1, RESULT * arg2);
+static void function_rand(RESULT * result, RESULT * arg1, RESULT * arg2);
+
+void init_evaluator(void)
+{
+
+        AddFunction("log", 1, function_log);
+        AddFunction("sin", 1, function_sin);
+        AddFunction("cos", 1, function_cos);
+        AddFunction("tan", 1, function_tan);
+        AddFunction("asin", 1, function_asin);
+        AddFunction("acos", 1, function_acos);
+        AddFunction("atan", 1, function_atan);
+        AddFunction("if", 2, function_if);
+        AddFunction("div", 2, function_div);
+        AddFunction("rand", 1, function_rand);
+
+        SetVariableNumeric ("PI", PI);
+
+        SetVariableNumeric ("E", E);
+
+        SetVariableNumeric ("PHI", PHI);
+
+}
+
+static void function_log(RESULT * result, RESULT * arg1)
+{
+        double val = log(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_sin(RESULT * result, RESULT * arg1)
+{
+        double val = sin(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_cos(RESULT * result, RESULT * arg1)
+{
+        double val = cos(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_tan(RESULT * result, RESULT * arg1)
+{
+        double val = tan(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_asin(RESULT * result, RESULT * arg1)
+{
+        double val = asin(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_acos(RESULT * result, RESULT * arg1)
+{
+        double val = acos(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_atan(RESULT * result, RESULT * arg1)
+{
+        double val = atan(R2N(arg1));
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_if(RESULT * result, RESULT * arg1, RESULT * arg2, RESULT * arg3)
+{
+        double a = R2N(arg1);
+        double b = R2N(arg2);
+        double c = R2N(arg3);
+        double val = (c != 0.0) ? a : b;
+
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_div(RESULT * result, RESULT * arg1, RESULT * arg2)
+{
+        double a = R2N(arg1);
+        double b = R2N(arg2);
+        double val = (a == 0) ? 0 : (b / a);
+        SetResult(&result, R_NUMBER, &val);
+}
+
+static void function_rand(RESULT * result, RESULT * arg1, RESULT * arg2)
+{
+        int a, b, seed, val;
+        a = R2N(arg1);
+        b = R2N(arg1);
+
+        seed = time(NULL);
+
+        srand(seed);
+
+        val = (rand() % (b - a)) + a;
+
+        SetResult(&result, R_NUMBER, &val);
+}
+

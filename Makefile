@@ -4,15 +4,33 @@ APPNAME = StarVisuals
 ACTIVITY = starvisuals
 
 all:
+	@ndk-build
+	@ant clean
 	@ant release
+install:
+	@adb -e install -r bin/StarVisuals.apk
+	@adb -e push libs/armeabi/libinput_alsa.so /data/libvisual/plugins/input/
+	#@adb -e push libs/armeabi/libactor_AVS.so /data/libvisual/plugins/actor/
+	#@adb -e push libs/armeabi/libactor_avs_stars.so /data/libvisual/plugins/actor/
+	#@adb -e push libs/armeabi/libactor_avs_superscope.so /data/libvisual//plugins/actor/
+	@adb -e push libs/armeabi/libactor_corona.so /data/libvisual/plugins/actor/
 
 debug:
+	@ndk-build APP_OPTIM=debug
+	@ant clean
 	@ant debug
 
-install:
-	@ant debug install
+debuginstall:
+	@adb -e install -r bin/starvisuals-debug.apk
+	@adb -e push libs/armeabi/libinput_alsa.so /data/libvisual/plugins/input/
+	@adb -e push libs/armeabi/libactor_AVS.so /data/libvisual//plugins/actor/
+	@adb -e push libs/armeabi/libactor_avs_stars.so /data/libvisual/plugins/actor/
+	@adb -e push libs/armeabi/libactor_avs_superscope.so /data/libvisual/plugins/actor/
+	@adb -e push libs/armeabi/libactor_corona.so /data/libvisual/plugins/actor/
+	@adb -e push libs/armeabi/libactor_lv_scope.so /data/libvisual/plugins/actor/
 
 clean:
+	@ndk-build clean
 	@ant clean
 
 update:

@@ -133,6 +133,8 @@ int inp_alsa_cleanup (VisPluginData *plugin)
 
 int inp_alsa_upload (VisPluginData *plugin, VisAudio *audio)
 {
+visual_log(VISUAL_LOG_INFO, "--------------------------------LAWL");
+return 0;
 	int16_t data[PCM_BUF_SIZE];
 	alsaPrivate *priv = NULL;
 	int rcnt;

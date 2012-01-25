@@ -31,11 +31,16 @@
 #include <assert.h>
 #include <signal.h>
 #include <gettext.h>
+#include <android/log.h>
 
 #include "lv_common.h"
 #include "lv_error.h"
 #include "lv_log.h"
 
+#define  LOG_TAG    "libvisual"
+#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
+#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
 
 static VisLogVerboseness verboseness = VISUAL_LOG_VERBOSENESS_MEDIUM;
 
@@ -192,7 +197,7 @@ void _lv_log (VisLogSeverity severity, const char *file,
 	switch (severity) {
 		case VISUAL_LOG_DEBUG:
 			if (verboseness == VISUAL_LOG_VERBOSENESS_HIGH)
-				fprintf (stderr, "libvisual DEBUG: %s: %s() [(%s,%d)]: %s\n",
+				LOGW("libvisual DEBUG: %s: %s() [(%s,%d)]: %s\n",
 						__lv_progname, funcname, file, line, str);
 		
 			break;
@@ -241,33 +246,33 @@ void _lv_log (VisLogSeverity severity, const char *file,
 
 static void default_info_handler (const char *msg, const char *funcname, void *privdata)
 {
-	printf ("libvisual INFO: %s: %s\n", __lv_progname, msg);
+	LOGI("libvisual INFO: %s: %s\n", __lv_progname, msg);
 }
 
 static void default_warning_handler (const char *msg, const char *funcname, void *privdata)
 {
 	if (funcname)
-		fprintf (stderr, "libvisual WARNING: %s: %s(): %s\n",
+		LOGW("libvisual WARNING: %s: %s(): %s\n",
 				__lv_progname, funcname, msg);
 	else
-		fprintf (stderr, "libvisual WARNING: %s: %s\n", __lv_progname, msg);
+		LOGW("libvisual WARNING: %s: %s\n", __lv_progname, msg);
 }
 
 static void default_critical_handler (const char *msg, const char *funcname, void *privdata)
 {
 	if (funcname)
-		fprintf (stderr, "libvisual CRITICAL: %s: %s(): %s\n",
+		LOGE ("libvisual CRITICAL: %s: %s(): %s\n",
 				__lv_progname, funcname, msg);
 	else
-		fprintf (stderr, "libvisual CRITICAL: %s: %s\n", __lv_progname, msg);
+		LOGE ("libvisual CRITICAL: %s: %s\n", __lv_progname, msg);
 }
 
 static void default_error_handler (const char *msg, const char *funcname, void *privdata)
 {
 	if (funcname)
-		fprintf (stderr, "libvisual ERROR: %s: %s(): %s\n",
+		LOGE("libvisual ERROR: %s: %s(): %s\n",
 				__lv_progname, funcname, msg);
 	else
-		fprintf (stderr, "libvisual ERROR: %s: %s\n", __lv_progname, msg);
+		LOGE("libvisual ERROR: %s: %s\n", __lv_progname, msg);
 }
 

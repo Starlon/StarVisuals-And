@@ -731,7 +731,7 @@ int visual_actor_run (VisActor *actor, VisAudio *audio)
 	}
 
 	/* Songinfo handling */
-	if (visual_songinfo_compare (&actor->songcompare, &actplugin->songinfo) == FALSE ||
+	if(0) /*FIXME*/if (visual_songinfo_compare (&actor->songcompare, &actplugin->songinfo) == FALSE ||
         actor->songcompare.elapsed != actplugin->songinfo.elapsed) {
 		visual_songinfo_mark (&actplugin->songinfo);
 
