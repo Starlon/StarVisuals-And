@@ -31,13 +31,6 @@
 #include "libvisual/libvisual.h"
 #include "libvisual/lv_video.h"
 
-/*
-#define  LOG_TAG    "starvisuals"
-#define  LOGI(...)  __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
-#define  LOGW(...)  __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
-#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
-*/
-
 /* Set to 1 to enable debug log traces. */
 #define DEBUG 0
 
@@ -884,12 +877,15 @@ void android_main(struct android_app* state) {
     VisParamContainer *params;
     VisParamEntry *param;
 
+    if(!visual_is_initialized())
+    {
 	    visual_init_path_add( "/data/local/libvisual/plugins/input");
 	    visual_init_path_add( "/data/local/libvisual/plugins/actor");
 	    visual_init_path_add( "/data/local/libvisual/plugins/morph");
 	    visual_init_path_add( "/data/local/libvisual/plugins/transform");
 	    visual_log_set_verboseness(VISUAL_LOG_VERBOSENESS_HIGH);
 	    visual_init(0, NULL);
+    }
 
     // Make sure glue isn't stripped.
     app_dummy();

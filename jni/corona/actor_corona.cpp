@@ -243,7 +243,6 @@ extern "C" int lv_corona_render (VisPluginData *plugin, VisVideo *video, VisAudi
 	unsigned long timemilli = 0;
 	int i;
 
-/*
 	visual_buffer_set_data_pair (&pcmb, pcm, sizeof (pcm));
 
 	visual_audio_get_sample (audio, &pcmb, VISUAL_AUDIO_CHANNEL_LEFT);
@@ -253,12 +252,12 @@ extern "C" int lv_corona_render (VisPluginData *plugin, VisVideo *video, VisAudi
 	visual_audio_get_sample (audio, &pcmb, VISUAL_AUDIO_CHANNEL_RIGHT);
 	visual_buffer_set_data_pair (&buffer, freq[1], sizeof (freq[1]));
 	visual_audio_get_spectrum_for_sample (&buffer, &pcmb, TRUE);
-*/
+
 	for (i = 0; i < 256; ++i) {
-		freqdata[0][i*2]   = .5;//freq[0][i];
-		freqdata[1][i*2]   = .5;//freq[1][i];
-		freqdata[0][i*2+1] = .5;//freq[0][i];
-		freqdata[1][i*2+1] = .5;//freq[1][i];
+		freqdata[0][i*2]   = freq[0][i];
+		freqdata[1][i*2]   = freq[1][i];
+		freqdata[0][i*2+1] = freq[0][i];
+		freqdata[1][i*2+1] = freq[1][i];
 	}
 
 	visual_time_get (&curtime);
@@ -276,18 +275,16 @@ extern "C" int lv_corona_render (VisPluginData *plugin, VisVideo *video, VisAudi
 		priv->tl.frequency[1][i] = freqdata[1][i] * 32768;
 	}
 
-	//priv->corona->update(&priv->tl); // Update Corona
-	//priv->pcyl->update(&priv->tl);    // Update Palette Cycler
+	priv->corona->update(&priv->tl); // Update Corona
+	priv->pcyl->update(&priv->tl);    // Update Palette Cycler
 
-/*
 	visual_video_init (&vidcorona);
 	visual_video_set_depth (&vidcorona, VISUAL_VIDEO_DEPTH_8BIT);
 	visual_video_set_dimension (&vidcorona, video->width, video->height);
 	visual_video_set_buffer (&vidcorona, priv->corona->getSurface());
 
-	visual_video_blit_overlay(video, &vidcorona, 0, 0, FALSE);
-*/
-	//visual_video_mirror (video, &vidcorona, VISUAL_VIDEO_MIRROR_Y);
+	//visual_video_blit_overlay(video, &vidcorona, 0, 0, FALSE);
+	visual_video_mirror (video, &vidcorona, VISUAL_VIDEO_MIRROR_Y);
 
 	return 0;
 }

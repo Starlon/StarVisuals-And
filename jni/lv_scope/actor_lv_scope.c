@@ -177,8 +177,6 @@ VisPalette *lv_scope_palette (VisPluginData *plugin)
 
 int lv_scope_render (VisPluginData *plugin, VisVideo *video, VisAudio *audio)
 {
-	visual_log(VISUAL_LOG_INFO, "video %p", video);
- 
 	ScopePrivate *priv = visual_object_get_private (VISUAL_OBJECT (plugin));
 	VisColor col;
 	float *pcmbuf;
