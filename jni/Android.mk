@@ -74,6 +74,6 @@ LOCAL_CFLAGS	:= -O0 -g -Wall
 LOCAL_STATIC_LIBRARIES := android_native_app_glue evaluator libvisual
 include $(BUILD_SHARED_LIBRARY)
 
-include jni/libvisual-avs/Android.mk
+# FIXME include jni/libvisual-avs/Android.mk
 
 $(call import-module,android/native_app_glue)
