@@ -860,10 +860,10 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
             engine->running = FALSE;
             break;
 	case APP_CMD_GAINED_FOCUS:
-            //engine_draw_frame(engine);
+            engine_draw_frame(engine);
             break;
 	case APP_CMD_WINDOW_RESIZED:
-            //engine_draw_frame(engine);
+            engine_draw_frame(engine);
             break;
     }
 }
@@ -1008,5 +1008,4 @@ void android_main(struct android_app* state) {
     visual_object_unref(VISUAL_OBJECT(localqueue));
 */
     visual_mem_free(engine.priv);
-    visual_quit();
 }
